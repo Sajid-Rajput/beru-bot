@@ -28,15 +28,15 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Install dev: typescript, @types/node, tsx, drizzle-kit @done(26-03-02 02:55)
     ✔ Install dev: vitest, @vitest/coverage-v8 @done(26-03-02 02:55)
     ✔ Verify: `npm install` completes clean, node_modules in .gitignore @done(26-03-02 02:55)
-  T1.3 Docker Compose Configuration: @critical
-    ☐ Create docker-compose.yml (5 services: app, worker, postgres, redis, caddy)
-    ☐ Configure 2 networks: beru_internal, beru_external
-    ☐ Configure 2 volumes: pg_data, redis_data
-    ☐ Create Dockerfile (multi-stage: base → deps → build → app/worker targets)
-    ☐ Create Caddyfile (reverse proxy for bot.berubot.com)
-    ☐ Create .dockerignore
-    ☐ Verify: `docker compose config` validates
-    ☐ Verify: `docker compose up -d postgres redis` starts DB + cache
+  ✔ T1.3 Docker Compose Configuration: @critical @done(26-03-02 03:18)
+    ✔ Create docker-compose.yml (5 services: app, worker, postgres, redis, caddy) @done(26-03-02 03:18)
+    ✔ Configure 2 networks: beru_internal, beru_external @done(26-03-02 03:18)
+    ✔ Configure 2 volumes: pg_data, redis_data @done(26-03-02 03:18)
+    ✔ Create Dockerfile (multi-stage: base → deps → build → app/worker targets) @done(26-03-02 03:18)
+    ✔ Create Caddyfile (reverse proxy for bot.berubot.com) @done(26-03-02 03:18)
+    ✔ Create .dockerignore @done(26-03-02 03:18)
+    ✔ Verify: `docker compose config` validates @done(26-03-02 03:18)
+    ✔ Verify: `docker compose up -d postgres redis` starts DB + cache @done(26-03-02 03:18)
   T1.4 Project Directory Structure: @critical
     ☐ Create src/bot/handlers/ (12 handler files)
     ☐ Create src/bot/keyboards/ (6 keyboard files)

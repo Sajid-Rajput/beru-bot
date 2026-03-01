@@ -1,0 +1,7 @@
+// TODO: Implement quicknode route (T5.x / T7.x)
+import type { Env } from '#root/server/environment.js'
+import { Hono } from 'hono'
+
+const app = new Hono<Env>()
+
+export const quicknodeRoutes = app
