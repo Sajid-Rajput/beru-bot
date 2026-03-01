@@ -1,0 +1,479 @@
+
+═══════════════════════════════════════════════════════════════
+  BERU BOT — Shadow Sell v2 Sprint
+  March 1–8, 2026 | Launch: March 9
+  "ARISE // TRADE // CONQUER"
+═══════════════════════════════════════════════════════════════
+
+Sprint Overview:
+  Target: Full implementation from zero to production-ready
+  Stack: Grammy.js · Hono · PostgreSQL · Redis · BullMQ · Solana
+  Template: bot-base/telegram-bot-template (Docker deploy branch)
+  Docs: ARCHITECTURE.md · beru_bot_interface_and_flow.md · COMMUNITY_AND_GROWTH_STRATEGY.md
+
+Day 1 — March 1 — Foundation & Infrastructure: @critical
+  Goal: Docker stack running, all 12 DB tables migrated, project structure ready.
+  T1.1 Clone Base Template: @critical
+    ☐ Clone bot-base/telegram-bot-template Docker deploy branch
+    ☐ Remove template example handlers, keep Grammy.js + Hono skeleton
+    ☐ Init fresh git: `git init` + commit "chore: init from bot-base template"
+    ☐ Verify TypeScript compiles: `tsc --noEmit`
+  T1.2 Install All NPM Dependencies: @critical
+    ☐ Install core: grammy, @grammyjs/conversations, @grammyjs/hydrate, @grammyjs/parse-mode
+    ☐ Install core: hono, @hono/node-server
+    ☐ Install core: drizzle-orm, postgres
+    ☐ Install core: bullmq, ioredis
+    ☐ Install core: @solana/web3.js, @solana/spl-token, bs58
+    ☐ Install core: valibot, pino, pino-pretty, dotenv
+    ☐ Install dev: typescript, @types/node, tsx, drizzle-kit
+    ☐ Install dev: vitest, @vitest/coverage-v8
+    ☐ Verify: `npm install` completes clean, node_modules in .gitignore
+  T1.3 Docker Compose Configuration: @critical
+    ☐ Create docker-compose.yml (5 services: app, worker, postgres, redis, caddy)
+    ☐ Configure 2 networks: beru_internal, beru_external
+    ☐ Configure 2 volumes: pg_data, redis_data
+    ☐ Create Dockerfile (multi-stage: base → deps → build → app/worker targets)
+    ☐ Create Caddyfile (reverse proxy for bot.berubot.com)
+    ☐ Create .dockerignore
+    ☐ Verify: `docker compose config` validates
+    ☐ Verify: `docker compose up -d postgres redis` starts DB + cache
+  T1.4 Project Directory Structure: @critical
+    ☐ Create src/bot/handlers/ (12 handler files)
+    ☐ Create src/bot/keyboards/ (6 keyboard files)
+    ☐ Create src/bot/callback-data/index.ts
+    ☐ Create src/bot/middlewares/ (4 middleware files)
+    ☐ Create src/bot/helpers/ (2 helper files)
+    ☐ Create src/server/routes/ (3 route files)
+    ☐ Create src/server/middlewares/hmac-verify.ts
+    ☐ Create src/services/ (8 service files)
+    ☐ Create src/workers/ (5 worker files)
+    ☐ Create src/db/schema/ (14 schema files including barrel)
+    ☐ Create src/db/repositories/ (11 repository files)
+    ☐ Create src/utils/ (constants.ts, errors.ts, logger.ts)
+    ☐ Create src/app.ts and src/worker.ts entry points
+    ☐ Update tsconfig.json (strict mode, paths, outDir: dist/)
+    ☐ Create drizzle.config.ts at project root
+  T1.5 Environment Configuration: @critical
+    ☐ Create .env.example with all 25+ env vars from ARCHITECTURE.md §15.3
+    ☐ Create .env (gitignored) with dev values
+    ☐ Generate test MASTER_KEY_SECRET: `openssl rand -hex 32`
+    ☐ Implement src/config.ts — load + validate all env vars with Valibot
+    ☐ Export typed config object with grouped sections (bot, db, redis, security, solana, etc.)
+    ☐ Verify: missing BOT_TOKEN throws clear error on startup
+  T1.6 Database Schemas (Drizzle ORM): @critical
+    ☐ Define 7 PostgreSQL enums in src/db/schema/enums.ts
+    ☐ Define users table schema
+    ☐ Define wallets table schema (with encryption fields)
+    ☐ Define projects table schema (with soft-delete)
+    ☐ Define project_features table schema (with JSONB config + stats)
+    ☐ Define whitelist_entries table schema
+    ☐ Define transactions table schema
+    ☐ Define ephemeral_wallets table schema
+    ☐ Define fee_ledger table schema
+    ☐ Define referrals table schema
+    ☐ Define referral_payouts table schema
+    ☐ Define audit_log table schema
+    ☐ Define waitlist_entries table schema
+    ☐ Create barrel export src/db/schema/index.ts
+    ☐ Define ShadowSellConfig TypeScript interface for JSONB
+    ☐ Run: `npx drizzle-kit generate` → verify migration SQL
+    ☐ Run: `npx drizzle-kit migrate` → verify 12 tables created in psql
+    ☐ Verify all indexes from ARCHITECTURE.md §5.3 are created
+  T1.7 Verify Docker Stack: @high
+    ☐ `docker compose up -d` — all 5 containers start
+    ☐ Verify PostgreSQL: `SELECT 1` + `\dt` shows 12 tables
+    ☐ Verify Redis: `redis-cli ping` → PONG
+    ☐ Verify networks: `docker network ls | grep beru`
+    ☐ Check logs: no errors in `docker compose logs --tail=50`
+  T1.8 Database Connection Module: @critical
+    ☐ Implement src/db/index.ts — Drizzle client init from config.db.url
+    ☐ Import all schemas into Drizzle client
+    ☐ Verify: simple query `db.select().from(users)` returns empty []
+  T1.9 Logger & Constants Setup: @high
+    ☐ Implement src/utils/logger.ts — Pino with structured JSON (prod) / pretty (dev)
+    ☐ Implement src/utils/constants.ts — all numeric constants from §15.7
+    ☐ Implement src/utils/errors.ts — 6 custom error classes
+
+Day 2 — March 2 — Core Services Layer: @critical
+  Goal: CryptoService, WalletService, repositories, queues, validation all working.
+  T2.1 CryptoService (Envelope Encryption): @critical
+    ☐ Implement MEK derivation: PBKDF2 600K iterations + SHA-512 + per-wallet salt
+    ☐ Implement encrypt: plaintext → random DEK → AES-256-GCM → wrapped output
+    ☐ Implement decrypt: wrapped → derive MEK → unwrap DEK → AES-256-GCM → plaintext
+    ☐ Implement memory safety: .fill(0) in finally blocks for all key buffers
+    ☐ Verify invariants 1-4 compliance
+    ☐ Write 5+ unit tests: roundtrip, wrong key, tampered data, different salts, memory zeroing
+  T2.2 WalletService: @critical
+    ☐ Implement generateWallet() — Keypair.generate() + encrypt + store
+    ☐ Implement importWallet(base58) — decode + validate + encrypt + store + zero input
+    ☐ Implement decryptWalletKey(walletId) — fetch + decrypt + audit log
+    ☐ Implement assignWalletToProject(walletId, projectId)
+    ☐ Implement getWalletsByUser(userId) — public keys only
+    ☐ Verify: import → decrypt roundtrip matches original key
+    ☐ Verify: audit log entry on every decrypt
+  T2.3 Redis Connection & BullMQ Queues: @critical
+    ☐ Create Redis client with IORedis from config.redis.url
+    ☐ Handle reconnection events with logging
+    ☐ Define 5 BullMQ queues: sell-queue, notification-queue, monitor, recovery, fee-payout
+    ☐ Configure sell-queue: concurrency 5, limiter max 10/min
+    ☐ Export enqueueSellJob(data) producer method
+    ☐ Export enqueueNotification(data) producer method
+    ☐ Define TypeScript interfaces: SellJobData, NotificationData
+    ☐ Export Redis key pattern constants from §15.8
+  T2.4 Repository Layer (Data Access): @critical
+    ☐ Implement user.repository.ts (findByTelegramId, create, updatePayoutWallet, findByReferralCode)
+    ☐ Implement wallet.repository.ts (create, findById, findByPublicKey, findByUserId, setAssigned)
+    ☐ Implement project.repository.ts (create, findById, findByUserIdAndMint, findAllByUserId, countByUserId, softDelete)
+    ☐ Implement project-feature.repository.ts (create, findByProjectId, updateStatus, updateConfig, setWatching, findAllWatching, updatePinnedMessageId, updateStats)
+    ☐ Implement whitelist.repository.ts (create, findByFeatureId, delete, countByFeatureId, isWhitelisted)
+    ☐ Implement transaction.repository.ts (create, updateStatus, findPendingByFeatureId)
+    ☐ Implement ephemeral-wallet.repository.ts (create, updateStatus, findRecoveryNeeded, incrementRecoveryAttempts)
+    ☐ Implement fee-ledger.repository.ts (create, findByTransactionId, findPendingPayouts)
+    ☐ Implement referral.repository.ts (create, findReferrer, findReferredUsers, getEarnings)
+    ☐ Implement audit-log.repository.ts (create, findByUserId)
+    ☐ Implement waitlist.repository.ts (join, findByTelegramId, getCount, findAllWaiting, markNotified)
+    ☐ Verify: soft-delete filter on all project queries (invariant 12)
+    ☐ Verify: basic CRUD against Docker PostgreSQL
+  T2.5 Valibot Validation Schemas: @high
+    ☐ Validate Solana private key (base58, 64/88 bytes, valid keypair)
+    ☐ Validate Solana CA/public key (base58, 32-44 chars)
+    ☐ Validate Solana wallet address
+    ☐ Validate Min/Max Sell % (1-100, integer)
+    ☐ Validate Min MCAP (≥ 0, 0 = disabled)
+    ☐ Validate Min Buy Amount (≥ 0.001 SOL)
+    ☐ Validate custom percentage/SOL/USD inputs
+    ☐ Verify error messages match interface doc §9.1 exactly
+  T2.6 ProjectService & DexScreenerService: @high
+    ☐ Implement dexscreener.service.ts — fetchTokenInfo(mint) with 60s memory cache
+    ☐ Implement project.service.ts — createProject (check limits + duplicates + generate wallet + create feature + audit log)
+    ☐ Implement deleteProject (stop active feature + soft-delete + unassign wallet + audit log)
+    ☐ Implement getProjectDashboard (full project data with feature + config + stats)
+    ☐ Verify: MAX_PROJECTS_PER_USER (3) enforced
+    ☐ Verify: default config = { min_sell: 5, max_sell: 20, min_mcap: 0, min_buy: 0.1 }
+
+Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
+  Goal: Start → Setup → Import → New Project → Key Display all working.
+  T3.1 Bot Initialization & Middleware Stack: @critical
+    ☐ Create src/bot/index.ts — Grammy.js Bot init with token
+    ☐ Install plugins: hydrate, parse-mode, conversations
+    ☐ Define session type: lastNavMessageId, inputState, user
+    ☐ Register middleware stack in order: rate-limit → debounce → user-resolution → message-mgmt
+    ☐ Register all command handlers
+    ☐ Register all callback query handlers
+    ☐ Register text message handler (smart detection)
+    ☐ Export createBot() factory function
+    ☐ Verify: bot responds to /start
+  T3.2 Start Command & Welcome/Home Screens: @critical
+    ☐ Implement deep link parsing: ref_{id}, wl_{id}, website, community, organic
+    ☐ Implement SCR_WELCOME (first-time users): video + message + inline keyboard
+    ☐ Implement SCR_HOME (returning users): stats + same keyboard
+    ☐ Implement referral creation on ref_ deep link (tier 1 + tier 2)
+    ☐ Build home.keyboard.ts: Quick Setup | My Projects + New Project | Wallets | Referrals + Support
+    ☐ Store lastNavMessageId in session
+    ☐ Delete prior navigation message on new send
+  T3.3 Message Management Middleware: @critical
+    ☐ Implement delete-previous-nav behavior (delete old → send new → store ID)
+    ☐ Implement sendNavigationMessage() helper
+    ☐ Implement sendTransientMessage(ctx, text, deleteAfterMs) with setTimeout
+    ☐ Implement sendSensitiveMessage(ctx, text, kb, deleteAfterMs) with spoiler
+    ☐ Implement sendPinnedStatusMessage(ctx, text) + updatePinnedStatusMessage()
+    ☐ Implement immediate deletion of user-pasted private keys (invariant 7)
+  T3.4 Rate Limit & Debounce Middlewares: @high
+    ☐ Implement rate-limit.ts: Redis INCR on rate:{telegramId}, reject >30/min
+    ☐ Implement debounce.ts: Redis SET NX on debounce:{telegramId}:{cb}, TTL 1s
+    ☐ Verify: rapid button clicks are swallowed after first
+    ☐ Verify: rate limit triggers warning message
+  T3.5 Quick Setup & Wallet Import Flow: @critical
+    ☐ Implement SCR_QUICK_SETUP screen + inputState = import_wallet
+    ☐ Implement private key input: IMMEDIATELY delete user's message
+    ☐ Validate with Valibot schema
+    ☐ Call WalletService.importWallet() on valid key
+    ☐ Handle already-exists error
+    ☐ Implement SCR_WALLET_IMPORTED with public key display
+    ☐ Clear session.inputState after completion
+  T3.6 Smart CA Detection Middleware: @critical
+    ☐ Implement priority-ordered text handler: command → CA → input state → fallback
+    ☐ CA regex: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/
+    ☐ Delete user's CA message immediately
+    ☐ Existing project with mint → navigate to dashboard
+    ☐ New CA → enter new project flow
+    ☐ Input state routing (config values, private keys, etc.)
+    ☐ Fallback: silently ignore
+  T3.7 New Project Flow (CA → Token Found → Confirm): @critical
+    ☐ Implement SCR_NEW_PROJECT_CA_INPUT + project count check (max 3)
+    ☐ Call DexScreenerService.fetchTokenInfo(mint)
+    ☐ Implement SCR_TOKEN_FOUND with token info display
+    ☐ Implement SCR_TOKEN_NOT_FOUND with retry option
+    ☐ Implement confirm: ProjectService.createProject()
+    ☐ Generate project wallet + encrypt
+    ☐ Navigate to key display screen
+  T3.8 Project Key Display Screen: @critical
+    ☐ Decrypt project wallet key (one-time display)
+    ☐ Send with Telegram spoiler: ||{privateKey}||
+    ☐ Include public key in plain text + warning
+    ☐ Schedule auto-delete after 24h (KEY_DISPLAY_DELETE_AFTER)
+    ☐ Log audit event: wallet.decrypt
+    ☐ Implement cb_key_acknowledged: delete key msg → show dashboard
+
+Day 4 — March 4 — Bot Handlers Part 2 (Dashboard, Config & CRUD): @critical
+  Goal: Complete dashboard, all config screens, whitelist, delete, referrals, wallets.
+  T4.1 Project Dashboard (SCR_DASHBOARD): @critical
+    ☐ Fetch project + feature + stats from DB
+    ☐ Build dashboard message: token info, wallet, status, config, stats
+    ☐ Build state-aware inline keyboard (idle/stopped vs watching/executing)
+    ☐ Config buttons clickable when idle/stopped, disabled when active (invariant 23)
+    ☐ Start/Stop button switches based on status
+    ☐ Implement refresh handler (edit existing message)
+    ☐ Build dashboard.keyboard.ts with all callbacks
+  T4.2 Config Screens (5 Sub-Screens): @critical
+    ☐ Implement Min Sell %: presets [1, 3, 5, 10, 15] + Custom
+    ☐ Implement Max Sell %: presets [10, 15, 20, 30, 50] + Custom
+    ☐ Implement Min MCAP: presets [$0, $10K, $50K, $100K, $500K] + Custom
+    ☐ Implement Min Buy: presets [0.1, 0.5, 1, 2, 5 SOL] + Custom
+    ☐ Implement Custom input mode (set session.inputState, validate, save)
+    ☐ Cross-validate: min_sell ≤ max_sell
+    ☐ Update project_features.config JSONB on save
+    ☐ Log audit event: config.change with old/new values
+    ☐ Return to dashboard after save
+    ☐ Build config.keyboard.ts
+  T4.3 Whitelist CRUD: @critical
+    ☐ Implement SCR_WHITELIST: paginated list (5/page) with remove buttons
+    ☐ Show count: "Whitelist ({count}/25)"
+    ☐ Implement Add Whitelist: validate address + check duplicates + save
+    ☐ Enforce MAX_WHITELIST_ENTRIES = 25 limit
+    ☐ Implement Remove: delete + re-render list
+    ☐ Build whitelist.keyboard.ts with pagination
+  T4.4 My Projects & Wallets Screens: @high
+    ☐ Implement SCR_MY_PROJECTS: list projects with status emojis
+    ☐ Handle empty state: "No projects yet"
+    ☐ Project selection → navigate to dashboard
+    ☐ Implement SCR_WALLETS: list imported wallets with public keys
+    ☐ Show wallet assignment status
+  T4.5 Delete Project Flow: @high
+    ☐ Implement SCR_DELETE_CONFIRM with warning message
+    ☐ Extra warning if feature is active
+    ☐ Confirm: ProjectService.deleteProject() → navigate to My Projects
+    ☐ Cancel: return to dashboard
+    ☐ Verify: soft-delete (deleted_at set, not hard delete)
+  T4.6 Referrals & Payout Wallet: @high
+    ☐ Implement SCR_REFERRALS: link, stats, tier counts, earnings, payout wallet
+    ☐ Implement SCR_SET_PAYOUT_WALLET: input + validate address + save
+    ☐ Display referral link: t.me/BeruMonarchBot?start=ref_{telegramId}
+    ☐ Show total + pending earnings from fee_ledger
+  T4.7 Shadow Sell Activation (Start/Stop): @critical
+    ☐ Start: run pre-flight checks (balance > 0, valid config)
+    ☐ Start: transition idle → pending → watching (FSM §8.1)
+    ☐ Start: set is_watching = true, add to watched-token cache, sync QN KV
+    ☐ Start: create + pin MSG_PINNED_STATUS (initial state)
+    ☐ Start: send state alert "⚡ Shadow Sell is now WATCHING" (transient, 30s)
+    ☐ Start: disable config buttons on dashboard (invariant 23)
+    ☐ Stop: transition watching/executing → stopped
+    ☐ Stop: set is_watching = false, remove from cache, sync QN KV
+    ☐ Stop: update pinned status to "Stopped by user"
+    ☐ Stop: re-enable config buttons on dashboard
+
+Day 5 — March 5 — Webhook + Sell Execution Pipeline: @critical
+  Goal: Full sell pipeline: QuickNode webhook → dedup → 10-step sell → Jupiter swap → notify.
+  T5.1 Hono HTTP Server Setup: @critical
+    ☐ Create src/server/index.ts — init Hono app
+    ☐ Register POST /webhook/quicknode route
+    ☐ Register POST /webhook/telegram route (Grammy webhook)
+    ☐ Register GET /health route
+    ☐ Register GET /api/waitlist/count route
+    ☐ Add global error handler + request logging (Pino)
+    ☐ Integrate in src/app.ts: start bot + start Hono on port 3000
+    ☐ Webhook mode (prod) vs polling mode (dev) toggle
+  T5.2 HMAC-SHA256 Webhook Verification: @critical
+    ☐ Extract x-qn-signature, x-qn-timestamp, x-qn-nonce headers
+    ☐ Validate timestamp: reject if |now - timestamp| > 30s (invariant 6)
+    ☐ Validate nonce: Redis SET NX nonce:{nonce} TTL 60s (replay protection)
+    ☐ Compute HMAC-SHA256(secret, timestamp.nonce.body) — timing-safe compare
+    ☐ Reject first, process second (invariant 5)
+    ☐ Audit log: auth.webhook_reject on any failure
+  T5.3 StreamWebhookHandler: @critical
+    ☐ Implement dedup: Redis SET NX dedup:{txSignature} TTL 300s
+    ☐ Parse webhook payload: tx signature, token mint, buyer, amount
+    ☐ Lookup watched-token cache (in-memory Set)
+    ☐ Check whitelist: skip if buyer is whitelisted
+    ☐ Enqueue to sell-queue via queueService.enqueueSellJob()
+    ☐ Always return 200 OK (never 5xx to QuickNode)
+    ☐ Build watched-token cache on boot from DB
+    ☐ Safety net: refresh cache every CACHE_REFRESH_INTERVAL (60s)
+  T5.4 Jupiter API Client: @critical
+    ☐ Implement getQuote(inputMint, outputMint, amount, slippageBps)
+    ☐ Implement getSwapTransaction(quoteResponse, userPublicKey)
+    ☐ Timeout: 15s per request
+    ☐ Retry: 1 retry on 5xx with 2s delay
+    ☐ Error typing and logging (never log private keys)
+  T5.5 Solana Transaction Helpers: @critical
+    ☐ Create Connection from config.solana.rpcUrl
+    ☐ Implement getTokenBalance(wallet, mint)
+    ☐ Implement getSolBalance(wallet)
+    ☐ Implement buildCombinedFundingTx (tokens + SOL in 1 TX — the speed optimization)
+    ☐ Implement buildSweepAndFeeTx (SOL sweep + fee collection atomic — invariant 18)
+    ☐ Implement sendAndConfirmTransaction with `confirmed` commitment (ADR #5)
+    ☐ Implement calculateSellAmount(balance, minPct, maxPct) — random in range
+  T5.6 SellExecutionWorker (10-Step Pipeline): @critical
+    ☐ Step 1: Acquire Redis sell lock (SET NX, TTL 60s) — fail if locked (invariant 14)
+    ☐ Step 2: Load project feature config, verify status = watching
+    ☐ Step 3: Parallel pre-flight: [getTokenBalance] + [Jupiter getQuote]
+    ☐ Step 4: Generate ephemeral wallet (encrypt + store)
+    ☐ Step 5: Build + send combined funding TX (tokens + SOL)
+    ☐ Step 6: Deserialize Jupiter swap TX, sign with ephemeral, send
+    ☐ Step 7: Handle result — success: continue, fail: mark recovery_needed
+    ☐ Step 8: Build + send sweep TX (SOL → main wallet) + fee (→ platform wallet)
+    ☐ Step 9: Create transaction + fee_ledger records with fee calculations
+    ☐ Step 10: Release lock, enqueue notification, check balance=0 → completed
+    ☐ Fee calc: gross=sol*1%, discount=10% if referred, tier1=35%, tier2=5%
+    ☐ Configure: attempts: 1 (no auto-retry — invariant 16)
+    ☐ Ensure sell lock released in finally block (invariant 25)
+    ☐ Zero all decrypted keys in finally block
+
+Day 6 — March 6 — Background Workers & Notifications: @critical
+  Goal: All 4 BullMQ workers + complete notification system with pinned status.
+  T6.1 MarketCapMonitorWorker: @critical
+    ☐ Hot loop: poll DexScreener every 30s for all watching features
+    ☐ Evaluate MCAP against min_market_cap_usd threshold
+    ☐ Below threshold → pause: stop watching, remove from cache, update pinned
+    ☐ Above threshold (with 5% hysteresis buffer) → resume watching
+    ☐ Cold loop: rebuild watched-token set from DB every 5min, sync to QN KV
+    ☐ Redis lock to prevent overlapping cycles (invariant 17)
+    ☐ Send state alert notifications on state changes
+  T6.2 RecoveryWorker: @critical
+    ☐ Run every 5min: scan ephemeral_wallets with status=recovery_needed
+    ☐ For each: decrypt key, check balances, attempt sweep
+    ☐ Success → status: recovered, Failure → increment recovery_attempts
+    ☐ After 5 failures → status: failed + admin notification
+    ☐ Zero decrypted keys in finally block
+  T6.3 FeePayoutWorker: @high
+    ☐ Weekly cron (Sunday): calculate accrued referral earnings
+    ☐ Filter: earnings ≥ REFERRAL_MIN_PAYOUT_SOL (0.01)
+    ☐ Check payout_wallet_address exists (skip if not set)
+    ☐ Execute SOL transfer + record in referral_payouts
+    ☐ Send payout notification to each user
+    ☐ Below-threshold amounts carry over (invariant 22)
+  T6.4 NotificationService: @critical
+    ☐ Implement notification consumer (concurrency: 10) from notification-queue
+    ☐ Route to type-specific handlers
+    ☐ Implement all 8 notification types with correct messages
+    ☐ Auto-delete timers: sell=60s, failed=45s, state=30s, payout=never
+    ☐ Handle Telegram rate limits with backoff
+    ☐ Store timeout refs for graceful shutdown cancellation
+  T6.5 Pinned Status Message Lifecycle: @critical
+    ☐ Implement 5 states: initial, after-sells, paused, stopped, completed
+    ☐ Use ctx.api.editMessageText() to update (never send new)
+    ☐ Update stats in project_features.stats JSONB after each sell
+    ☐ Handle "message not modified" error gracefully (no-op)
+    ☐ Stats persist in DB across bot restarts
+  T6.6 Worker Entry Point & Bootstrap: @critical
+    ☐ Implement src/worker.ts boot sequence: config → logger → DB → Redis → workers
+    ☐ Register: SellExecution (conc:5), Monitor (30s), Recovery (5min), FeePayout (weekly)
+    ☐ Implement graceful shutdown: SIGTERM/SIGINT → worker.close() → 30s timeout → exit
+    ☐ Implement src/app.ts boot: config → DB → Redis → watched-token cache → bot → Hono
+    ☐ Register NotificationConsumer in app process
+    ☐ Verify: both processes start and log readiness messages
+
+Day 7 — March 7 — Waitlist + Testing + Polish: @high
+  Goal: Waitlist complete, all flows tested, bugs fixed, error handling verified.
+  T7.1 Waitlist Bot Handlers: @high
+    ☐ Add PRE_LAUNCH_MODE env var / feature flag
+    ☐ Implement waitlist welcome screen (pre-launch)
+    ☐ Implement Join Waitlist: position calculation logic from COMMUNITY doc §7.5
+    ☐ Implement Check Position: status screen with referral stats
+    ☐ Implement referral bumping: position - 1 (min 1), referral_count + 1
+    ☐ Notify referrer on new referral join
+    ☐ Deep link routing: wl_{telegramId} → credit referrer
+    ☐ Post-launch toggle: PRE_LAUNCH_MODE=false → normal onboarding
+  T7.2 Waitlist Count API: @low
+    ☐ Implement GET /api/waitlist/count → { count, lastUpdated }
+    ☐ Cache in Redis: waitlist:count TTL 5min
+    ☐ Rate limit: 60 req/min
+  T7.3 Integration Testing: @critical
+    ☐ Flow 1: /start → Quick Setup → import key → key deleted → wallet imported
+    ☐ Flow 2: New Project → paste CA → token found → confirm → key displayed → dashboard
+    ☐ Flow 3: Dashboard → change all 4 config values → saved correctly
+    ☐ Flow 4: Whitelist → add → remove → pagination works
+    ☐ Flow 5: Start Shadow Sell → pre-flight pass → watching → pinned status created
+    ☐ Flow 6: Stop → status updated → config re-enabled
+    ☐ Flow 7: Send mock webhook → dedup works → whitelist skip works
+    ☐ Flow 8: Fee calc verification: 1 SOL → 0.01 gross → referrer shares correct
+    ☐ Flow 9: Error handling: invalid key, invalid CA, max projects, max whitelist
+    ☐ Flow 10: State machine: verify valid/invalid transitions per §8.1
+    ☐ Flow 11: Referral creation via deep link + stats display
+    ☐ Flow 12: Delete project → soft-delete → removed from list
+    ☐ Flow 13: Waitlist join → position → referral bump → notification
+  T7.4 Bug Fixes & Code Polish: @high
+    ☐ Fix all bugs from integration testing
+    ☐ Review all TODO/FIXME comments
+    ☐ Verify error messages match interface doc exactly
+    ☐ Verify all audit log events fire correctly
+    ☐ Check for memory leaks (notification timers)
+    ☐ Run `tsc --noEmit` — zero errors
+    ☐ Verify Docker containers restart cleanly
+
+Day 8 — March 8 — Deployment & Launch Prep: @critical
+  Goal: Production running on VPS with TLS, webhooks, channels — launch-ready.
+  T8.1 VPS Provisioning: @critical
+    ☐ Provision 4-core VPS (Ubuntu 22.04, 8GB RAM, 80GB SSD)
+    ☐ Install Docker Engine + Docker Compose v2
+    ☐ Configure ufw: allow 22, 80, 443 only
+    ☐ Create non-root user with sudo + SSH key auth
+    ☐ Disable password authentication
+  T8.2 Production Deployment: @critical
+    ☐ Push repo to VPS
+    ☐ Create production .env with real credentials
+    ☐ Generate production MASTER_KEY_SECRET — BACK UP SECURELY
+    ☐ Build + start: `docker compose up -d --build`
+    ☐ Run migrations on production DB
+    ☐ Verify all 5 containers running and healthy
+    ☐ Check production logs: no errors
+  T8.3 TLS & Domain: @critical
+    ☐ Point DNS: bot.berubot.com → VPS IP (A record)
+    ☐ Wait for propagation: `dig bot.berubot.com`
+    ☐ Verify Caddy auto-TLS: `curl https://bot.berubot.com/health`
+    ☐ Verify HTTP → HTTPS redirect
+  T8.4 Webhook Registration: @critical
+    ☐ Set Telegram webhook: POST /setWebhook → bot.berubot.com/webhook/telegram
+    ☐ Verify: getWebhookInfo shows correct URL
+    ☐ Configure QuickNode Stream → bot.berubot.com/webhook/quicknode
+    ☐ Set QN webhook signing secret
+    ☐ Configure Stream filter for SPL token transfers
+  T8.5 Database Backup Cron: @high
+    ☐ Create /backups directory on VPS
+    ☐ Add crontab: daily 3am pg_dump | gzip
+    ☐ Add retention: delete backups older than 7 days
+    ☐ Test: manual backup creates valid file
+    ☐ Test: backup can be restored
+  T8.6 Production Smoke Testing: @critical
+    ☐ /start → waitlist welcome appears ✓
+    ☐ Join waitlist → position assigned ✓
+    ☐ Referral link works ✓
+    ☐ Health endpoint: 200 ✓
+    ☐ Waitlist count API: JSON response ✓
+    ☐ All 5 containers running ✓
+    ☐ No errors in startup logs ✓
+    ☐ Valid HMAC webhook → 200 ✓
+    ☐ Invalid HMAC webhook → 401 ✓
+  T8.7 Telegram Community Channels: @high
+    ☐ Create @BeruBotAnnouncements (broadcast channel)
+    ☐ Set description, profile pic, public link, pinned welcome
+    ☐ Create @BeruBotCommunity (group chat)
+    ☐ Set description, rules, profile pic, slow mode 30s, pinned welcome
+    ☐ Bot links present in both channel descriptions
+  T8.8 Launch Checklist: @critical
+    ☐ ✓ All 5 Docker containers healthy
+    ☐ ✓ TLS certificate valid on bot.berubot.com
+    ☐ ✓ Telegram webhook set and verified
+    ☐ ✓ QuickNode Stream webhook configured
+    ☐ ✓ Database backup cron running
+    ☐ ✓ .env has production MASTER_KEY_SECRET (backed up)
+    ☐ ✓ Bot responds to /start in production
+    ☐ ✓ Waitlist mode active (PRE_LAUNCH_MODE=true)
+    ☐ ✓ Health endpoint returns 200
+    ☐ ✓ @BeruBotAnnouncements created
+    ☐ ✓ @BeruBotCommunity created
+    ☐ ✓ berubot.com Launch button links to bot
+    ☐ ✓ No errors in last 100 log lines
+    ☐ ✓ MASTER_KEY_SECRET backed up securely (NOT in git)
+
+Archive:
