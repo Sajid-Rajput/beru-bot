@@ -8,6 +8,41 @@ const baseConfigSchema = v.object({
   botToken: v.pipe(v.string(), v.regex(/^\d+:[\w-]+$/, 'Invalid token')),
   botAllowedUpdates: v.optional(v.pipe(v.string(), v.transform(JSON.parse), v.array(v.picklist(API_CONSTANTS.ALL_UPDATE_TYPES))), '[]'),
   botAdmins: v.optional(v.pipe(v.string(), v.transform(JSON.parse), v.array(v.number())), '[]'),
+
+  // ── Database ──────────────────────────────────────────────────────────────
+  databaseUrl: v.pipe(v.string(), v.url('DATABASE_URL must be a valid URL')),
+
+  // ── Redis ──────────────────────────────────────────────────────────────────
+  redisUrl: v.pipe(v.string(), v.url('REDIS_URL must be a valid URL')),
+
+  // ── Security ───────────────────────────────────────────────────────────────
+  masterKeySecret: v.pipe(
+    v.string(),
+    v.regex(/^[0-9a-f]{64}$/, 'MASTER_KEY_SECRET must be exactly 64 lowercase hex chars (openssl rand -hex 32)'),
+  ),
+  qnWebhookSecret: v.optional(v.string(), ''),
+  domain: v.optional(v.string(), 'localhost'),
+
+  // ── Solana ────────────────────────────────────────────────────────────────
+  solanaRpcUrl: v.optional(v.string(), ''),
+  platformFeeWallet: v.optional(v.string(), ''),
+  platformFeePercentage: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.01'),
+
+  // ── QuickNode ─────────────────────────────────────────────────────────────
+  qnStreamId: v.optional(v.string(), ''),
+  qnApiKey: v.optional(v.string(), ''),
+  qnKvStoreId: v.optional(v.string(), ''),
+
+  // ── Referral ──────────────────────────────────────────────────────────────
+  referralTier1Pct: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.35'),
+  referralTier2Pct: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.05'),
+  referralUserDiscountPct: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.10'),
+  referralMinPayoutSol: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.01'),
+  referralLinkFormat: v.optional(v.string(), 'https://t.me/BeruMonarchBot?start=ref_{telegramId}'),
+
+  // ── Bot metadata ─────────────────────────────────────────────────────────
+  botUsername: v.optional(v.string(), 'BeruMonarchBot'),
+  supportBot: v.optional(v.string(), 'BeruSupportBot'),
 })
 
 const configSchema = v.variant('botMode', [

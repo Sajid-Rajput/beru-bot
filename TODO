@@ -37,22 +37,22 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Create .dockerignore @done(26-03-02 03:18)
     ✔ Verify: `docker compose config` validates @done(26-03-02 03:18)
     ✔ Verify: `docker compose up -d postgres redis` starts DB + cache @done(26-03-02 03:18)
-  T1.4 Project Directory Structure: @critical
-    ☐ Create src/bot/handlers/ (12 handler files)
-    ☐ Create src/bot/keyboards/ (6 keyboard files)
-    ☐ Create src/bot/callback-data/index.ts
-    ☐ Create src/bot/middlewares/ (4 middleware files)
-    ☐ Create src/bot/helpers/ (2 helper files)
-    ☐ Create src/server/routes/ (3 route files)
-    ☐ Create src/server/middlewares/hmac-verify.ts
-    ☐ Create src/services/ (8 service files)
-    ☐ Create src/workers/ (5 worker files)
-    ☐ Create src/db/schema/ (14 schema files including barrel)
-    ☐ Create src/db/repositories/ (11 repository files)
-    ☐ Create src/utils/ (constants.ts, errors.ts, logger.ts)
-    ☐ Create src/app.ts and src/worker.ts entry points
-    ☐ Update tsconfig.json (strict mode, paths, outDir: dist/)
-    ☐ Create drizzle.config.ts at project root
+  ✔ T1.4 Project Directory Structure: @critical @done(26-03-02 03:37)
+    ✔ Create src/bot/handlers/ (12 handler files) @done(26-03-02 03:37)
+    ✔ Create src/bot/keyboards/ (6 keyboard files) @done(26-03-02 03:37)
+    ✔ Create src/bot/callback-data/index.ts @done(26-03-02 03:37)
+    ✔ Create src/bot/middlewares/ (4 middleware files) @done(26-03-02 03:37)
+    ✔ Create src/bot/helpers/ (2 helper files) @done(26-03-02 03:37)
+    ✔ Create src/server/routes/ (3 route files) @done(26-03-02 03:37)
+    ✔ Create src/server/middlewares/hmac-verify.ts @done(26-03-02 03:37)
+    ✔ Create src/services/ (8 service files) @done(26-03-02 03:37)
+    ✔ Create src/workers/ (5 worker files) @done(26-03-02 03:37)
+    ✔ Create src/db/schema/ (14 schema files including barrel) @done(26-03-02 03:37)
+    ✔ Create src/db/repositories/ (11 repository files) @done(26-03-02 03:37)
+    ✔ Create src/utils/ (constants.ts, errors.ts, logger.ts) @done(26-03-02 03:37)
+    ✔ Create src/app.ts and src/worker.ts entry points @done(26-03-02 03:37)
+    ✔ Update tsconfig.json (strict mode, paths, outDir: dist/) @done(26-03-02 03:37)
+    ✔ Create drizzle.config.ts at project root @done(26-03-02 03:37)
   T1.5 Environment Configuration: @critical
     ☐ Create .env.example with all 25+ env vars from ARCHITECTURE.md §15.3
     ☐ Create .env (gitignored) with dev values
