@@ -50,7 +50,7 @@
     "pino-pretty": "13.0.0",
     "postgres": "^3.4.8",
     "tsx": "4.19.3",
-    "valibot": "0.42.1"
+    "valibot": "1.2.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "4.3.0",
