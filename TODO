@@ -13,11 +13,11 @@ Sprint Overview:
 
 Day 1 — March 1 — Foundation & Infrastructure: @critical
   Goal: Docker stack running, all 12 DB tables migrated, project structure ready.
-  T1.1 Clone Base Template: @critical
-    ☐ Clone bot-base/telegram-bot-template Docker deploy branch
-    ☐ Remove template example handlers, keep Grammy.js + Hono skeleton
-    ☐ Init fresh git: `git init` + commit "chore: init from bot-base template"
-    ☐ Verify TypeScript compiles: `tsc --noEmit`
+  ✔ T1.1 Clone Base Template: @critical @done(26-03-02 02:46)
+    ✔ Clone bot-base/telegram-bot-template Docker deploy branch @done(26-03-02 02:46)
+    ✔ Remove template example handlers, keep Grammy.js + Hono skeleton @done(26-03-02 02:46)
+    ✔ Init fresh git: `git init` + commit "chore: init from bot-base template" @done(26-03-02 02:46)
+    ✔ Verify TypeScript compiles: `tsc --noEmit` @done(26-03-02 02:46)
   T1.2 Install All NPM Dependencies: @critical
     ☐ Install core: grammy, @grammyjs/conversations, @grammyjs/hydrate, @grammyjs/parse-mode
     ☐ Install core: hono, @hono/node-server
