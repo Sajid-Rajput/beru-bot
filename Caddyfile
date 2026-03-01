@@ -1,0 +1,19 @@
+{$DOMAIN} {
+    # Telegram webhook (Grammy.js bot updates)
+    handle /telegram* {
+        reverse_proxy app:3000
+    }
+
+    # QuickNode Stream webhook (buy event notifications)
+    handle /webhook/qn* {
+        reverse_proxy app:3000
+    }
+
+    # Health check endpoint
+    handle /health {
+        reverse_proxy app:3000
+    }
+
+    # Block everything else — no other routes exposed
+    respond "Not Found" 404
+}

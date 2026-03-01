@@ -1,1 +1,42 @@
-node_modules
+# Dependencies (installed fresh inside Docker)
+node_modules/
+.pnpm-store/
+
+# Build output (built inside Docker)
+build/
+
+# Git
+.git/
+.gitignore
+
+# Environment files (injected via docker-compose env_file)
+.env
+.env.*
+!.env.example
+
+# Documentation
+docs/
+*.md
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+coverage/
+*.test.ts
+*.spec.ts
+vitest.config.*
+
+# CI/CD
+.github/
+
+# Misc dev files
+.husky/
+eslint.config.js
+tsconfig*.json
+drizzle.config.ts
