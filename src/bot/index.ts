@@ -2,13 +2,19 @@ import type { Context } from '#root/bot/context.js'
 import type { Config } from '#root/config.js'
 import type { Logger } from '#root/logger.js'
 import type { BotConfig } from 'grammy'
+import { adminFeature } from '#root/bot/features/admin.js'
+import { languageFeature } from '#root/bot/features/language.js'
+import { unhandledFeature } from '#root/bot/features/unhandled.js'
+import { welcomeFeature } from '#root/bot/features/welcome.js'
 import { errorHandler } from '#root/bot/handlers/error.js'
+import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
+import { session } from '#root/bot/middlewares/session.js'
 import { updateLogger } from '#root/bot/middlewares/update-logger.js'
 import { autoChatAction } from '@grammyjs/auto-chat-action'
 import { hydrate } from '@grammyjs/hydrate'
 import { hydrateReply, parseMode } from '@grammyjs/parse-mode'
 import { sequentialize } from '@grammyjs/runner'
-import { Bot as TelegramBot } from 'grammy'
+import { MemorySessionStorage, Bot as TelegramBot } from 'grammy'
 
 interface Dependencies {
   config: Config
@@ -48,8 +54,20 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(autoChatAction(bot.api))
   protectedBot.use(hydrateReply)
   protectedBot.use(hydrate())
+  protectedBot.use(session({
+    getSessionKey,
+    storage: new MemorySessionStorage(),
+  }))
+  protectedBot.use(i18n)
 
-  // TODO: Register Beru Bot handlers here (T3.1+)
+  // Handlers
+  protectedBot.use(welcomeFeature)
+  protectedBot.use(adminFeature)
+  if (isMultipleLocales)
+    protectedBot.use(languageFeature)
+
+  // must be the last handler
+  protectedBot.use(unhandledFeature)
 
   return bot
 }
