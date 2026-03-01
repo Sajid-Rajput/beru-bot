@@ -18,16 +18,16 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Remove template example handlers, keep Grammy.js + Hono skeleton @done(26-03-02 02:46)
     ✔ Init fresh git: `git init` + commit "chore: init from bot-base template" @done(26-03-02 02:46)
     ✔ Verify TypeScript compiles: `tsc --noEmit` @done(26-03-02 02:46)
-  T1.2 Install All NPM Dependencies: @critical
-    ☐ Install core: grammy, @grammyjs/conversations, @grammyjs/hydrate, @grammyjs/parse-mode
-    ☐ Install core: hono, @hono/node-server
-    ☐ Install core: drizzle-orm, postgres
-    ☐ Install core: bullmq, ioredis
-    ☐ Install core: @solana/web3.js, @solana/spl-token, bs58
-    ☐ Install core: valibot, pino, pino-pretty, dotenv
-    ☐ Install dev: typescript, @types/node, tsx, drizzle-kit
-    ☐ Install dev: vitest, @vitest/coverage-v8
-    ☐ Verify: `npm install` completes clean, node_modules in .gitignore
+  ✔ T1.2 Install All NPM Dependencies: @critical @done(26-03-02 02:54)
+    ✔ Install core: grammy, @grammyjs/conversations, @grammyjs/hydrate, @grammyjs/parse-mode @done(26-03-02 02:55)
+    ✔ Install core: hono, @hono/node-server @done(26-03-02 02:55)
+    ✔ Install core: drizzle-orm, postgres @done(26-03-02 02:55)
+    ✔ Install core: bullmq, ioredis @done(26-03-02 02:55)
+    ✔ Install core: @solana/web3.js, @solana/spl-token, bs58 @done(26-03-02 02:55)
+    ✔ Install core: valibot, pino, pino-pretty, dotenv @done(26-03-02 02:55)
+    ✔ Install dev: typescript, @types/node, tsx, drizzle-kit @done(26-03-02 02:55)
+    ✔ Install dev: vitest, @vitest/coverage-v8 @done(26-03-02 02:55)
+    ✔ Verify: `npm install` completes clean, node_modules in .gitignore @done(26-03-02 02:55)
   T1.3 Docker Compose Configuration: @critical
     ☐ Create docker-compose.yml (5 services: app, worker, postgres, redis, caddy)
     ☐ Configure 2 networks: beru_internal, beru_external
