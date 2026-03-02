@@ -10,10 +10,10 @@ const baseConfigSchema = v.object({
   botAdmins: v.optional(v.pipe(v.string(), v.transform(JSON.parse), v.array(v.number())), '[]'),
 
   // ── Database ──────────────────────────────────────────────────────────────
-  databaseUrl: v.pipe(v.string(), v.url('DATABASE_URL must be a valid URL')),
+  databaseUrl: v.pipe(v.string(), v.nonEmpty('DATABASE_URL is required'), v.regex(/^postgresql:\/\//, 'DATABASE_URL must start with postgresql://')),
 
   // ── Redis ──────────────────────────────────────────────────────────────────
-  redisUrl: v.pipe(v.string(), v.url('REDIS_URL must be a valid URL')),
+  redisUrl: v.pipe(v.string(), v.nonEmpty('REDIS_URL is required'), v.regex(/^rediss?:\/\//, 'REDIS_URL must start with redis:// or rediss://')),
 
   // ── Security ───────────────────────────────────────────────────────────────
   masterKeySecret: v.pipe(
@@ -72,7 +72,7 @@ const configSchema = v.variant('botMode', [
       botWebhook: v.pipe(v.string(), v.url()),
       botWebhookSecret: v.pipe(v.string(), v.minLength(12)),
       serverHost: v.optional(v.string(), '0.0.0.0'),
-      serverPort: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '80'),
+      serverPort: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '3000'),
     }),
     v.transform(input => ({
       ...input,
@@ -91,8 +91,7 @@ export function createConfig(input: v.InferInput<typeof configSchema>) {
   return v.parse(configSchema, input)
 }
 
-export const config = createConfigFromEnvironment()
-
+// ── Bootstrap from process.env ──────────────────────────────────────────────
 function createConfigFromEnvironment() {
   type CamelCase<S extends string> = S extends `${infer P1}_${infer P2}${infer P3}`
     ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
@@ -125,10 +124,8 @@ function createConfigFromEnvironment() {
   }
 
   try {
-    // @ts-expect-error create config from environment variables
-    const config = createConfig(convertKeysToCamelCase(process.env))
-
-    return config
+    const envInput = convertKeysToCamelCase(process.env) as unknown as v.InferInput<typeof configSchema>
+    return createConfig(envInput)
   }
   catch (error) {
     throw new Error('Invalid config', {
@@ -136,3 +133,5 @@ function createConfigFromEnvironment() {
     })
   }
 }
+
+export const config = createConfigFromEnvironment()

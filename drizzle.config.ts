@@ -7,6 +7,6 @@ export default defineConfig({
   schema: './src/db/schema/index.ts',
   out: './drizzle',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgresql://beru:beru@localhost:5432/beru',
+    url: process.env.DATABASE_URL ?? 'postgresql://beru:beru@localhost:5432/beru_bot',
   },
 })

@@ -1,4 +1,5 @@
 import { config } from '#root/config.js'
+import { BERU_BOT_VERSION } from '#root/utils/constants.js'
 
 import { pino } from 'pino'
 
@@ -36,7 +37,7 @@ export const logger = pino(
     },
     base: {
       service: 'beru-bot',
-      version: '0.1.0',
+      version: BERU_BOT_VERSION,
     },
     timestamp: pino.stdTimeFunctions.isoTime,
     formatters: {

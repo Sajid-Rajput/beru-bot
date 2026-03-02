@@ -9,7 +9,7 @@
     "#root/*": "./build/src/*"
   },
   "author": "Sajid-Rajput",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=10.0.0"

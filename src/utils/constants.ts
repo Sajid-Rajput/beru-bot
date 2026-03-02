@@ -10,9 +10,12 @@ export const QUEUE_NOTIFICATION = 'notification'
 
 // ── Solana ────────────────────────────────────────────────────────────────
 export const SOLANA_COMMITMENT = 'confirmed' as const
+/** Mirrors `@solana/web3.js` LAMPORTS_PER_SOL — defined locally to avoid importing the full SDK */
 export const LAMPORTS_PER_SOL = 1_000_000_000
 
 // ── Fee structure (§15.7) ─────────────────────────────────────────────────
+// These are compile-time reference defaults.  Runtime code should prefer the
+// corresponding `config.*` values which may be overridden via environment variables.
 /** Platform fee applied to gross sell proceeds (1%) */
 export const PLATFORM_FEE_PERCENTAGE = 0.01
 /** Tier-1 referrer revenue share of effective fee (35%) */

@@ -129,8 +129,6 @@ dist
 # Data
 data/
 
-*.env
-
 # Jetbrains IDE
 .idea/
 

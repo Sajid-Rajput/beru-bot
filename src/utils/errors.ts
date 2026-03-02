@@ -9,11 +9,11 @@ export class BeruError extends Error {
   constructor(
     message: string,
     public readonly code: string,
-    public readonly cause?: unknown,
+    cause?: unknown,
   ) {
     super(message, cause ? { cause } : undefined)
     this.name = 'BeruError'
-    // Maintain proper prototype chain in transpiled ES5 targets
+    // Required so `instanceof` works correctly after extending built-in Error
     Object.setPrototypeOf(this, new.target.prototype)
   }
 }
