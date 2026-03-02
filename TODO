@@ -85,10 +85,10 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Verify Redis: `redis-cli ping` → PONG @done(26-03-02 15:20)
     ✔ Verify networks: `docker network ls | grep beru` @done(26-03-02 15:20)
     ✔ Check logs: no errors in `docker compose logs --tail=50` @done(26-03-02 15:20)
-  T1.8 Database Connection Module: @critical
-    ☐ Implement src/db/index.ts — Drizzle client init from config.db.url
-    ☐ Import all schemas into Drizzle client
-    ☐ Verify: simple query `db.select().from(users)` returns empty []
+  ✔ T1.8 Database Connection Module: @critical @done(26-03-02 16:15)
+    ✔ Implement src/db/index.ts — Drizzle client init from config.db.url @done(26-03-02 16:15)
+    ✔ Import all schemas into Drizzle client @done(26-03-02 16:15)
+    ✔ Verify: simple query `db.select().from(users)` returns empty [] @done(26-03-02 16:15)
   T1.9 Logger & Constants Setup: @high
     ☐ Implement src/utils/logger.ts — Pino with structured JSON (prod) / pretty (dev)
     ☐ Implement src/utils/constants.ts — all numeric constants from §15.7
