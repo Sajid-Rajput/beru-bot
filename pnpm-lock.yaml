@@ -18,8 +18,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1(grammy@1.35.0)
       '@grammyjs/hydrate':
-        specifier: 1.4.1
-        version: 1.4.1(grammy@1.35.0)
+        specifier: 1.5.0
+        version: 1.5.0(grammy@1.35.0)
       '@grammyjs/i18n':
         specifier: 1.1.2
         version: 1.1.2(grammy@1.35.0)
@@ -776,8 +776,8 @@ packages:
     peerDependencies:
       grammy: ^1.20.1
 
-  '@grammyjs/hydrate@1.4.1':
-    resolution: {integrity: sha512-xvd7XXoVHEhxBV2M8UHDRYkZlv32JioHfs+0l+eN34mkJJJBchuRDgRY3fkVJko8o1hGFHHLAJJTlEs2OAMolA==}
+  '@grammyjs/hydrate@1.5.0':
+    resolution: {integrity: sha512-5OtGidRbqD3TGxQ9HXrVxCWhjzR0uJQ32SFNeJO/I+g2iMQ7pkBkhp7QK11x/K2nWfyu+EcPQE3fubLNb75xQw==}
     engines: {node: ^12.20.0 || >=14.13.1}
     peerDependencies:
       grammy: ^1.20.1
@@ -3764,7 +3764,7 @@ snapshots:
     dependencies:
       grammy: 1.35.0
 
-  '@grammyjs/hydrate@1.4.1(grammy@1.35.0)':
+  '@grammyjs/hydrate@1.5.0(grammy@1.35.0)':
     dependencies:
       abort-controller: 3.0.0
       grammy: 1.35.0
