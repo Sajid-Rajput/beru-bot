@@ -1,7 +1,7 @@
-import { and, eq, notInArray } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { transactions } from '#root/db/schema/index.js'
+import { and, eq, notInArray } from 'drizzle-orm'
 
 export type TransactionRecord = typeof transactions.$inferSelect
 export type NewTransaction = typeof transactions.$inferInsert

@@ -3,8 +3,8 @@
   "type": "module",
   "version": "0.1.0",
   "private": true,
-  "description": "Beru Bot — Shadow Sell v2",
   "packageManager": "pnpm@10.24.0",
+  "description": "Beru Bot — Shadow Sell v2",
   "imports": {
     "#root/*": "./build/src/*"
   },

@@ -5,9 +5,9 @@
  * directly to `ValidationError` or sent back in bot replies.
  */
 
-import * as v from 'valibot'
 import { Keypair } from '@solana/web3.js'
 import bs58 from 'bs58'
+import * as v from 'valibot'
 
 // ── Solana address / public-key ───────────────────────────────────────────────
 
@@ -132,7 +132,7 @@ export const shadowSellConfigSchema = v.pipe(
     hysteresisPercentage: hysteresisPctSchema,
   }),
   v.check(
-    (cfg) => cfg.maxSellPercentage >= cfg.minSellPercentage,
+    cfg => cfg.maxSellPercentage >= cfg.minSellPercentage,
     'Maximum sell percentage must be greater than or equal to minimum sell percentage.',
   ),
 )

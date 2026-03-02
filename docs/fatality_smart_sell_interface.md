@@ -1,5 +1,3 @@
-
-
 ## Telegram Bot Flow Report
 Bot: @FatalitySMartBot
 ## Platform: Telegram Web
@@ -199,8 +197,6 @@ ripple"><span class="inline-button-text"><img src="./img-apple-64/274c.png" cla
 small" alt="  " data-path="./img-apple-64/274c.png" draggable="false"> Cancel</span><div ❌
 class="ripple-container"></div></button></div></div></div>
 
-
-
 ## Message➤ Deleted?
 ## Yes
 
@@ -333,7 +329,6 @@ Help and Support
 
 •Takes The User to new Bot which is support for this bot.
 
-
 CA Submission Flow (Token Validation State)7️⃣
 - ➤User Input:
 •Valid Contract Address (CA)
@@ -447,8 +442,6 @@ JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN
 •Help & Support
 •Redirects to Support Bot
 
-
-
 ## Extended Flow — New Project Lifecycle
 
 CA Submission Flow (Token Validation State)7️⃣
@@ -499,7 +492,6 @@ User clicks Confirm
 ➤Flow Transition:
 •Imported → Project Dashboard State
 
-
 Project Dashboard State (Post-Creation)9️⃣
 ➤Trigger:
 User clicks Imported
@@ -532,7 +524,6 @@ User clicks Imported
 •Confirm activation
 (Returns to Dashboard after setup)
 
-
 ## Limit Orders
 ## Expected Flow:
 •Set Stop Loss
@@ -563,8 +554,6 @@ Returns to Project List Screen
 
 ## Help & Support
 Redirects to Support Bot
-
-
 
 ## Individual Flows
 DOM Card Div:➤
@@ -653,7 +642,6 @@ class="Button tiny primary has-ripple"><span class="inline-button-text"><img src
 draggable="false"> Help &amp; Support</span><div
 class="ripple-container"></div></button></div></div></div>
 
-
 Limit Orders Module Flow
 ## Entry Point
 ➤Trigger:
@@ -716,7 +704,6 @@ class="Button tiny primary has-ripple"><span class="inline-button-text"><img src
 draggable="false"> Back to Project</span><div
 class="ripple-container"></div></button></div></div></div>
 
-
 ➕Add New Limit Order Flow
 
 ## STEP 1/3: SELECT ORDER TYPE
@@ -760,7 +747,6 @@ class="ripple-container"></div></button></div><div class="row"><button type="but
 
 class="Button tiny primary has-ripple"><span class="inline-button-text">Cancel</span><div
 class="ripple-container"></div></button></div></div></div></div>
-
 
 Take Profit Flow
 STEP 2/3 — Set Target MCAP
@@ -860,7 +846,6 @@ class="ripple-container"></div></button></div><div class="row"><button type="but
 class="Button tiny primary has-ripple"><span class="inline-button-text">Cancel</span><div
 class="ripple-container"></div></button></div></div></div>
 
-
 ➤Inline Buttons:
 ## •10%
 ## •25%
@@ -873,12 +858,6 @@ class="ripple-container"></div></button></div></div></div>
 - Order created
 - Returns to Limit Orders Overview
 - Active Orders count increases
-
-
-
-
-
-
 
 Stop Loss Flow
 STEP 2/3 — Set Target MCAP
@@ -1614,11 +1593,6 @@ Back to Project
 Returns user to:
 ## PROJECT DASHBOARD
 
-
-
-
-
-
 ## Delete Project Module Flow1️⃣4️⃣
 ## Entry Point
 ## Trigger:➤
@@ -1694,9 +1668,6 @@ User clicks Keep Project
 ## System Behavior:➤
 - Project not deleted
 - Returns to Project Dashboard
-
-
-
 
 ROOT: 1️⃣/start
 ## /start
@@ -1911,7 +1882,6 @@ Rapid Click → Stable UI
 ## ├── Rewards
 ## └── Help & Support
 
-
 ## Executive Summary
 This document outlines the interaction flow, state transitions, and message handling behavior of
 @FatalitySMartBot on Telegram Web.
@@ -1938,14 +1908,3 @@ Tested the following scenarios:
 - Empty message in CA state → (Document result)
 - Random text in Private Key state → (Document result)
 - Rapid button clicking → No UI break observed
-
-
-
-
-
-
-
-
-
-
-

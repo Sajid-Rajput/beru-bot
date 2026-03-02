@@ -114,7 +114,7 @@ Primary set used across all messages. **Do not use emojis outside this palette**
 👑 — Monarch (limit orders, authority)
 👻 — Phantom (stealth, invisible)
 ⚡ — Quick, start, activate, speed
-♾️ — Eternal (DCA, forever) 
+♾️ — Eternal (DCA, forever)
 👁️ — My Projects, watching
 ➕ — Create, add, new
 💀 — Delete, release, destroy
@@ -2285,18 +2285,18 @@ PRIORITY ORDER (checked top to bottom for every incoming text message):
 
 ```yaml
 shadow_sell:
-  min_sell_default: 5          # percentage
-  max_sell_default: 20         # percentage
-  min_mcap_default: 0          # USD (0 = no threshold)
-  min_buy_default: 0.1         # SOL
-  whitelist_max: 25               # max whitelisted wallets
+  min_sell_default: 5 # percentage
+  max_sell_default: 20 # percentage
+  min_mcap_default: 0 # USD (0 = no threshold)
+  min_buy_default: 0.1 # SOL
+  whitelist_max: 25 # max whitelisted wallets
 
 referral:
-  tier1_percentage: 35         # % of referral's fees
-  tier2_percentage: 5          # % of sub-referral's fees
-  user_discount: 10            # % discount for referred users
-  min_payout: 0.01             # SOL
-  payout_schedule: "weekly"    # Sunday
+  tier1_percentage: 35 # % of referral's fees
+  tier2_percentage: 5 # % of sub-referral's fees
+  user_discount: 10 # % discount for referred users
+  min_payout: 0.01 # SOL
+  payout_schedule: weekly # Sunday
 
 notifications:
   sell_auto_delete_seconds: 60
@@ -2305,12 +2305,12 @@ notifications:
   key_auto_delete_hours: 24
 
 debounce:
-  button_cooldown_ms: 1000     # ignore rapid clicks
+  button_cooldown_ms: 1000 # ignore rapid clicks
 
 bot:
-  username: "BeruMonarchBot"
-  support_bot: "BeruSupportBot"
-  referral_link_format: "https://t.me/BeruMonarchBot?start=ref_{telegramId}"
+  username: BeruMonarchBot
+  support_bot: BeruSupportBot
+  referral_link_format: 'https://t.me/BeruMonarchBot?start=ref_{telegramId}'
 ```
 
 ---

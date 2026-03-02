@@ -77,7 +77,7 @@ export class DexscreenerService {
     try {
       response = await fetch(`${BASE_URL}/${mint}`, {
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
-        headers: { 'Accept': 'application/json' },
+        headers: { Accept: 'application/json' },
       })
     }
     catch (err) {

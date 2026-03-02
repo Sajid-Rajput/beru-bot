@@ -1,7 +1,7 @@
-import { desc, eq } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { auditLog } from '#root/db/schema/index.js'
+import { desc, eq } from 'drizzle-orm'
 
 export type AuditLogRecord = typeof auditLog.$inferSelect
 export type NewAuditLog = typeof auditLog.$inferInsert

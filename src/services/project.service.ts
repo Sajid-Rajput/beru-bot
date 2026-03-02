@@ -1,14 +1,13 @@
-import { db } from '#root/db/index.js'
-import { logger } from '#root/logger.js'
-import type { ShadowSellConfig } from '#root/db/schema/index.js'
-import { ProjectRepository } from '#root/db/repositories/project.repository.js'
+import type { FeatureStatus, ProjectFeatureRecord } from '#root/db/repositories/project-feature.repository.js'
 import type { ProjectRecord } from '#root/db/repositories/project.repository.js'
-import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.repository.js'
-import type { ProjectFeatureRecord, FeatureStatus } from '#root/db/repositories/project-feature.repository.js'
-import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
+import type { ShadowSellConfig } from '#root/db/schema/index.js'
 import { AuditLogRepository } from '#root/db/repositories/audit-log.repository.js'
-import { WalletService } from '#root/services/wallet.service.js'
+import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.repository.js'
+import { ProjectRepository } from '#root/db/repositories/project.repository.js'
+import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
+import { logger } from '#root/logger.js'
 import { dexscreenerService } from '#root/services/dexscreener.service.js'
+import { WalletService } from '#root/services/wallet.service.js'
 import { BeruError } from '#root/utils/errors.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -18,7 +17,7 @@ const MAX_PROJECTS_PER_USER = 3
 export const DEFAULT_SHADOW_SELL_CONFIG: ShadowSellConfig = {
   minSellPercentage: 5,
   maxSellPercentage: 20,
-  targetMarketCapUsd: 0,     // 0 = disabled
+  targetMarketCapUsd: 0, // 0 = disabled
   minBuyAmountSol: 0.1,
   hysteresisPercentage: 5,
 }
@@ -102,18 +101,9 @@ export class ProjectService {
     const tokenSymbol = tokenInfo?.symbol ?? tokenMint.slice(0, 6).toUpperCase()
     const dexUrl = tokenInfo?.dexUrl ?? null
 
-    // 5–8. Atomic transaction: project + feature + wallet assignment + audit log
+    // 5–8. Sequential DB writes: project → feature → wallet assignment → audit log
     const finalConfig: ShadowSellConfig = { ...DEFAULT_SHADOW_SELL_CONFIG, ...config }
 
-    let result!: ProjectWithFeature
-    await db.transaction(async (tx) => {
-      void tx // Drizzle transactions are scoped to the callback; repos use the
-              // module-level `db` — for strict atomicity in a future refactor,
-              // repos should accept an optional tx argument.  For now we rely on
-              // the implicit postgres.js transaction isolation.
-    })
-
-    // Execute outside the transaction callback (repos use module-level `db`)
     const project = await this.projectRepo.create({
       userId,
       tokenMint,
@@ -144,8 +134,7 @@ export class ProjectService {
       },
     })
 
-    result = { project, feature }
-
+    const result: ProjectWithFeature = { project, feature }
     logger.info({ userId, projectId: project.id, tokenMint }, 'ProjectService: project created')
     return result
   }

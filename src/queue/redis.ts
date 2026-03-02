@@ -1,7 +1,7 @@
-import { Redis } from 'ioredis'
-
 import { config } from '#root/config.js'
+
 import { createLogger } from '#root/utils/logger.js'
+import { Redis } from 'ioredis'
 
 const log = createLogger('Redis')
 

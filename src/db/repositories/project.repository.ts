@@ -1,7 +1,7 @@
-import { and, count, eq, isNull } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { projects } from '#root/db/schema/index.js'
+import { and, count, eq, isNull } from 'drizzle-orm'
 
 export type ProjectRecord = typeof projects.$inferSelect
 export type NewProject = typeof projects.$inferInsert

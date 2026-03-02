@@ -1,7 +1,7 @@
-import { and, eq, sql } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { feeLedger, referralPayouts, referrals } from '#root/db/schema/index.js'
+import { and, eq, sql } from 'drizzle-orm'
 
 export type ReferralRecord = typeof referrals.$inferSelect
 export type NewReferral = typeof referrals.$inferInsert

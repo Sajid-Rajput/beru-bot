@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import type { WalletEncryptionPayload } from '../crypto.service.js'
 
-import { CryptoService, type WalletEncryptionPayload } from '../crypto.service.js'
+import { Buffer } from 'node:buffer'
+import { describe, expect, it } from 'vitest'
+import { CryptoService } from '../crypto.service.js'
 
 // ── Test constants ────────────────────────────────────────────────────────────
 const VALID_HEX_64 = 'a'.repeat(64) // 64 lowercase hex chars (valid master key)
@@ -10,7 +12,7 @@ const DIFFERENT_KEY = 'b'.repeat(64)
 // This is a deterministic test key — NOT used anywhere real.
 const SAMPLE_PRIVATE_KEY_B58 = '5Hx9QBaT4KwAfqcuZwuQx9cK2XGn1UhNJgpP4X4M3tPEQ3T7QvM7DaAo4XzRSv8GjLqJfH3XbVDMBk2CW1'
 
-describe('CryptoService', () => {
+describe('cryptoService', () => {
   // ── Constructor ─────────────────────────────────────────────────────────────
 
   describe('constructor', () => {
@@ -155,7 +157,7 @@ describe('CryptoService', () => {
       const payload = crypto.encryptPrivateKey('test-key')
       // Flip the last byte of the ciphertext
       const tampered = Buffer.from(payload.encryptedPrivateKey, 'base64')
-      tampered[tampered.length - 1] ^= 0xff
+      tampered[tampered.length - 1] ^= 0xFF
       const tamperedPayload: WalletEncryptionPayload = {
         ...payload,
         encryptedPrivateKey: tampered.toString('base64'),
@@ -167,7 +169,7 @@ describe('CryptoService', () => {
       const crypto = new CryptoService(VALID_HEX_64)
       const payload = crypto.encryptPrivateKey('test-key')
       const tampered = Buffer.from(payload.dekEncrypted, 'base64')
-      tampered[0] ^= 0xff
+      tampered[0] ^= 0xFF
       expect(() =>
         crypto.decryptPrivateKey({ ...payload, dekEncrypted: tampered.toString('base64') }),
       ).toThrow()

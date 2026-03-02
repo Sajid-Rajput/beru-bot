@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { users } from '#root/db/schema/index.js'
+import { eq } from 'drizzle-orm'
 
 export type UserRecord = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert

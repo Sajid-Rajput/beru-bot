@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { feeLedger } from '#root/db/schema/index.js'
+import { eq } from 'drizzle-orm'
 
 export type FeeLedgerRecord = typeof feeLedger.$inferSelect
 export type NewFeeLedger = typeof feeLedger.$inferInsert

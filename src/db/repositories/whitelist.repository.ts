@@ -1,7 +1,7 @@
-import { and, count, eq } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { whitelistEntries } from '#root/db/schema/index.js'
+import { and, count, eq } from 'drizzle-orm'
 
 export type WhitelistRecord = typeof whitelistEntries.$inferSelect
 

@@ -1,15 +1,19 @@
-import { Keypair } from '@solana/web3.js'
-import bs58 from 'bs58'
-const bs58Decode = (s: string) => bs58.decode(s)
-const bs58Encode = (b: Uint8Array) => bs58.encode(b)
+import type { WalletRecord } from '#root/db/repositories/wallet.repository.js'
+
+import { Buffer } from 'node:buffer'
 
 import { config } from '#root/config.js'
-import type { WalletRecord } from '#root/db/repositories/wallet.repository.js'
+
 import { AuditLogRepository } from '#root/db/repositories/audit-log.repository.js'
 import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
 import { WalletError } from '#root/utils/errors.js'
 import { createLogger } from '#root/utils/logger.js'
+import { Keypair } from '@solana/web3.js'
+import bs58 from 'bs58'
 import { CryptoService } from './crypto.service.js'
+
+const bs58Decode = (s: string) => bs58.decode(s)
+const bs58Encode = (b: Uint8Array) => bs58.encode(b)
 
 export type { WalletRecord }
 
@@ -217,4 +221,3 @@ export class WalletService {
     return all.filter(w => !w.isAssigned)
   }
 }
-

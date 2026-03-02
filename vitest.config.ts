@@ -6,7 +6,7 @@ export default defineConfig({
     // Map #root/* to ./src/* so tests import uncompiled TypeScript directly
     // (mirrors the package.json "imports" mapping used at runtime)
     alias: {
-      '#root/': resolve(import.meta.dirname || new URL('.', import.meta.url).pathname, 'src') + '/',
+      '#root/': `${resolve(import.meta.dirname || new URL('.', import.meta.url).pathname, 'src')}/`,
     },
     // Allow .js extension imports to resolve to .ts sources (NodeNext compat)
     extensionAlias: {

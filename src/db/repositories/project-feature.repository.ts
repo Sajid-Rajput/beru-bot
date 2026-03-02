@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm'
+import type { ShadowSellConfig } from '#root/db/schema/index.js'
 
 import { db } from '#root/db/index.js'
 import { projectFeatures } from '#root/db/schema/index.js'
-import type { ShadowSellConfig } from '#root/db/schema/index.js'
+import { eq } from 'drizzle-orm'
 
 export type ProjectFeatureRecord = typeof projectFeatures.$inferSelect
 export type NewProjectFeature = typeof projectFeatures.$inferInsert

@@ -1,7 +1,7 @@
-import { eq, sql } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { waitlistEntries } from '#root/db/schema/index.js'
+import { eq, sql } from 'drizzle-orm'
 
 export type WaitlistRecord = typeof waitlistEntries.$inferSelect
 export type NewWaitlistEntry = typeof waitlistEntries.$inferInsert

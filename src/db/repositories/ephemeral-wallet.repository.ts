@@ -1,7 +1,7 @@
-import { eq, sql } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { ephemeralWallets } from '#root/db/schema/index.js'
+import { eq, sql } from 'drizzle-orm'
 
 export type EphemeralWalletRecord = typeof ephemeralWallets.$inferSelect
 export type NewEphemeralWallet = typeof ephemeralWallets.$inferInsert

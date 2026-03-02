@@ -1,4 +1,4 @@
-import { Queue } from 'bullmq'
+import type { NotificationJobData, SellJobData } from './types.js'
 
 import { config } from '#root/config.js'
 import {
@@ -9,7 +9,7 @@ import {
   QUEUE_SELL_EXECUTION,
 } from '#root/utils/constants.js'
 import { createLogger } from '#root/utils/logger.js'
-import type { NotificationJobData, SellJobData } from './types.js'
+import { Queue } from 'bullmq'
 
 const log = createLogger('Queues')
 

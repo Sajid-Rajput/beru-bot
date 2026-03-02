@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'node:crypto'
 
 import {
@@ -185,4 +186,3 @@ export class CryptoService {
     return AUTH_TAG_LENGTH
   }
 }
-

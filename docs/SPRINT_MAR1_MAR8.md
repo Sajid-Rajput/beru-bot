@@ -395,7 +395,7 @@ export const config = {
   quicknode: { streamId, apiKey, kvStoreId },
   referral: { tier1Pct, tier2Pct, userDiscountPct, minPayoutSol },
   logging: { level },
-};
+}
 ```
 
 **✅ Acceptance Criteria:**
@@ -445,10 +445,10 @@ Implement all Drizzle ORM schemas. Create 12 tables + 7 enums:
 **Config JSONB interface** for Shadow Sell (reference in `src/db/schema/project-features.ts`):
 ```typescript
 interface ShadowSellConfig {
-  min_sell_percentage: number;   // default 5
-  max_sell_percentage: number;   // default 20
-  min_market_cap_usd: number;   // default 0 (disabled)
-  min_buy_amount_sol: number;   // default 0.1
+  min_sell_percentage: number // default 5
+  max_sell_percentage: number // default 20
+  min_market_cap_usd: number // default 0 (disabled)
+  min_buy_amount_sol: number // default 0.1
 }
 ```
 
@@ -514,13 +514,13 @@ Create `src/db/index.ts`:
 4. Include connection error handling and retry logic
 
 ```typescript
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { config } from '../config';
-import * as schema from './schema';
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
+import { config } from '../config'
+import * as schema from './schema'
 
-const client = postgres(config.db.url);
-export const db = drizzle(client, { schema });
+const client = postgres(config.db.url)
+export const db = drizzle(client, { schema })
 ```
 
 **✅ Acceptance Criteria:**
@@ -676,16 +676,16 @@ Implement `src/services/wallet.service.ts`:
 3. **Type definitions** for job data:
 ```typescript
 interface SellJobData {
-  tokenMint: string;
-  buyerAddress: string;
-  buyAmountSol: number;
-  triggerTxSignature: string;
+  tokenMint: string
+  buyerAddress: string
+  buyAmountSol: number
+  triggerTxSignature: string
 }
 
 interface NotificationData {
-  telegramId: number;
-  type: string;
-  data: Record<string, unknown>;
+  telegramId: number
+  type: string
+  data: Record<string, unknown>
 }
 ```
 
@@ -1373,7 +1373,7 @@ Implement `src/bot/handlers/whitelist.ts`:
    - Selecting a project → navigates to SCR_DASHBOARD
    - Keyboard:
      ```
-     [TOKEN1 — 🟢] 
+     [TOKEN1 — 🟢]
      [TOKEN2 — 🔴]
      [🔧 New Project]
      [🏠 Home]
@@ -1496,7 +1496,7 @@ Add start/stop handlers to `src/bot/handlers/dashboard.ts`:
    - ✅ Wallet has token balance > 0
    - ✅ Config is valid (min_sell ≤ max_sell, all values set)
    - If checks fail: send transient error with specific reason (30s)
-   
+
    **If checks pass:**
    - Transition feature status: `idle` → `pending` → `watching` (ARCHITECTURE.md Section 8.1)
    - Set `is_watching_transactions = true`
@@ -1505,11 +1505,11 @@ Add start/stop handlers to `src/bot/handlers/dashboard.ts`:
    - Create Pinned Status Message (MSG_PINNED_STATUS) — initial state:
      ```
      ⚔️ Shadow Sell — Active
-     
+
      Token: {name} ({symbol})
      Status: 👁️ Watching
      Sells: 0 | SOL: 0.000
-     
+
      Config: {min}–{max}% | MCAP ≥ ${mcap} | Buy ≥ {buy} SOL
      ```
    - Pin this message in chat
@@ -1523,7 +1523,7 @@ Add start/stop handlers to `src/bot/handlers/dashboard.ts`:
    - Update Pinned Status Message to:
      ```
      ⚔️ Shadow Sell — Stopped
-     
+
      Token: {name} ({symbol})
      Status: ⏹ Stopped by user
      Total Sells: {n} | Total SOL: {x}
@@ -1678,7 +1678,7 @@ Implement `src/server/routes/quicknode.ts`:
      buyerAddress,
      buyAmountSol,
      triggerTxSignature,
-   });
+   })
    ```
 
 **Watched-token cache** (in-memory Set, rebuilt on boot):
@@ -1821,12 +1821,12 @@ Step 10 → Release sell lock, enqueue notification, check if balance = 0
 
 **Fee calculation** (ARCHITECTURE.md Section 9.1):
 ```typescript
-const grossFee = receivedSol * PLATFORM_FEE_PERCENTAGE; // 1%
-const referralDiscount = hasReferrer ? grossFee * REFERRAL_USER_DISCOUNT_PCT : 0; // 10%
-const effectiveFee = grossFee - referralDiscount;
-const tier1Share = hasReferrer ? effectiveFee * REFERRAL_TIER1_PCT : 0; // 35%
-const tier2Share = hasSubReferrer ? effectiveFee * REFERRAL_TIER2_PCT : 0; // 5%
-const platformNet = effectiveFee - tier1Share - tier2Share;
+const grossFee = receivedSol * PLATFORM_FEE_PERCENTAGE // 1%
+const referralDiscount = hasReferrer ? grossFee * REFERRAL_USER_DISCOUNT_PCT : 0 // 10%
+const effectiveFee = grossFee - referralDiscount
+const tier1Share = hasReferrer ? effectiveFee * REFERRAL_TIER1_PCT : 0 // 35%
+const tier2Share = hasSubReferrer ? effectiveFee * REFERRAL_TIER2_PCT : 0 // 5%
+const platformNet = effectiveFee - tier1Share - tier2Share
 ```
 
 **Error handling at each step:**

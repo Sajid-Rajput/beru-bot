@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
-
 import { db } from '#root/db/index.js'
+
 import { wallets } from '#root/db/schema/index.js'
+import { eq } from 'drizzle-orm'
 
 export type WalletRecord = typeof wallets.$inferSelect
 export type NewWallet = typeof wallets.$inferInsert
@@ -26,8 +26,9 @@ export class WalletRepository {
 
   /**
    * Set or clear wallet assignment.
-   * @param assigned  true → assign, false → unassign
-   * @param projectId UUID when assigning, null when unassigning
+   * @param id         Wallet UUID
+   * @param assigned   true → assign, false → unassign
+   * @param projectId  UUID when assigning, null when unassigning
    */
   async setAssigned(
     id: string,
