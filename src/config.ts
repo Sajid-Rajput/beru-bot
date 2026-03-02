@@ -40,6 +40,11 @@ const baseConfigSchema = v.object({
   referralMinPayoutSol: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.01'),
   referralLinkFormat: v.optional(v.string(), 'https://t.me/BeruMonarchBot?start=ref_{telegramId}'),
 
+  // ── Community & Pre-Launch ────────────────────────────────────────────────
+  preLaunchMode: v.optional(v.pipe(v.string(), v.transform(JSON.parse), v.boolean()), 'true'),
+  announcementChannelId: v.optional(v.string(), ''),
+  communityGroupId: v.optional(v.string(), ''),
+
   // ── Bot metadata ─────────────────────────────────────────────────────────
   botUsername: v.optional(v.string(), 'BeruMonarchBot'),
   supportBot: v.optional(v.string(), 'BeruSupportBot'),
