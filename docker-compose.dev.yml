@@ -1,0 +1,28 @@
+# Development overrides — expose Postgres & Redis ports to the host
+# so the app/worker can run locally (outside Docker) during development.
+#
+# The beru_internal network is internal:true (no external access).
+# To bind host ports we also attach to the default bridge network.
+#
+# Usage:
+#   pnpm docker:dev:infra     → start just postgres + redis (ports exposed)
+#   pnpm dev                  → run bot/worker locally against them
+
+services:
+  postgres:
+    ports:
+      - '${DB_PORT:-5434}:5432'
+    networks:
+      - beru_internal
+      - beru_dev_bridge
+
+  redis:
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    networks:
+      - beru_internal
+      - beru_dev_bridge
+
+networks:
+  beru_dev_bridge:
+    driver: bridge

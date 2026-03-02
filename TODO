@@ -153,16 +153,16 @@ Day 2 — March 2 — Core Services Layer: @critical
 
 Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
   Goal: Start → Setup → Import → New Project → Key Display all working.
-  T3.1 Bot Initialization & Middleware Stack: @critical
-    ☐ Create src/bot/index.ts — Grammy.js Bot init with token
-    ☐ Install plugins: hydrate, parse-mode, conversations
-    ☐ Define session type: lastNavMessageId, inputState, user
-    ☐ Register middleware stack in order: rate-limit → debounce → user-resolution → message-mgmt
-    ☐ Register all command handlers
-    ☐ Register all callback query handlers
-    ☐ Register text message handler (smart detection)
-    ☐ Export createBot() factory function
-    ☐ Verify: bot responds to /start
+  ✔ T3.1 Bot Initialization & Middleware Stack: @critical @done(26-03-02)
+    ✔ Create src/bot/index.ts — Grammy.js Bot init with token @done(26-03-02)
+    ✔ Install plugins: hydrate, parse-mode, conversations @done(26-03-02)
+    ✔ Define session type: lastNavMessageId, inputState, user @done(26-03-02)
+    ✔ Register middleware stack in order: rate-limit → debounce → user-resolution → message-mgmt @done(26-03-02)
+    ✔ Register all command handlers @done(26-03-02)
+    ✔ Register all callback query handlers @done(26-03-02)
+    ✔ Register text message handler (smart detection) @done(26-03-02)
+    ✔ Export createBot() factory function @done(26-03-02)
+    ✔ Verify: bot responds to /start @done(26-03-02)
   T3.2 Start Command & Welcome/Home Screens: @critical
     ☐ Implement deep link parsing: ref_{id}, wl_{id}, website, community, organic
     ☐ Implement SCR_WELCOME (first-time users): video + message + inline keyboard
