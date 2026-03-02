@@ -11,7 +11,7 @@ services:
     networks:
       - beru_internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,6 +52,10 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      # Override localhost URLs with Docker service hostnames
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,6 +80,10 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      # Override localhost URLs with Docker service hostnames
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +99,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
     ports:
       - "80:80"
       - "443:443"

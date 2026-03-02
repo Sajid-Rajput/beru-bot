@@ -1,4 +1,4 @@
-{$DOMAIN} {
+{$DOMAIN:localhost} {
     # Telegram webhook (Grammy.js bot updates)
     handle /telegram* {
         reverse_proxy app:3000

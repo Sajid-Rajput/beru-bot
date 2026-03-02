@@ -38,5 +38,3 @@ vitest.config.*
 # Misc dev files
 .husky/
 eslint.config.js
-tsconfig*.json
-drizzle.config.ts

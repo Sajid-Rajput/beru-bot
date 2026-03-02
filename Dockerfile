@@ -32,8 +32,8 @@ COPY --from=builder /app/build ./build
 # Copy runtime assets needed by i18n
 COPY --from=builder /app/locales ./locales
 
-# Copy Drizzle migration files (uncomment after T1.6 generates them)
-# COPY --from=builder /app/drizzle ./drizzle
+# Copy Drizzle migration files
+COPY --from=builder /app/drizzle ./drizzle
 
 # Run as non-root for security
 USER node
@@ -53,8 +53,8 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy compiled JS
 COPY --from=builder /app/build ./build
 
-# Copy Drizzle migration files (uncomment after T1.6 generates them)
-# COPY --from=builder /app/drizzle ./drizzle
+# Copy Drizzle migration files
+COPY --from=builder /app/drizzle ./drizzle
 
 # Run as non-root for security
 USER node

@@ -60,31 +60,31 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Implement src/config.ts — load + validate all env vars with Valibot @done(26-03-02 03:48)
     ✔ Export typed config object with grouped sections (bot, db, redis, security, solana, etc.) @done(26-03-02 03:48)
     ✔ Verify: missing BOT_TOKEN throws clear error on startup @done(26-03-02 03:48)
-  T1.6 Database Schemas (Drizzle ORM): @critical
-    ☐ Define 7 PostgreSQL enums in src/db/schema/enums.ts
-    ☐ Define users table schema
-    ☐ Define wallets table schema (with encryption fields)
-    ☐ Define projects table schema (with soft-delete)
-    ☐ Define project_features table schema (with JSONB config + stats)
-    ☐ Define whitelist_entries table schema
-    ☐ Define transactions table schema
-    ☐ Define ephemeral_wallets table schema
-    ☐ Define fee_ledger table schema
-    ☐ Define referrals table schema
-    ☐ Define referral_payouts table schema
-    ☐ Define audit_log table schema
-    ☐ Define waitlist_entries table schema
-    ☐ Create barrel export src/db/schema/index.ts
-    ☐ Define ShadowSellConfig TypeScript interface for JSONB
-    ☐ Run: `npx drizzle-kit generate` → verify migration SQL
-    ☐ Run: `npx drizzle-kit migrate` → verify 12 tables created in psql
-    ☐ Verify all indexes from ARCHITECTURE.md §5.3 are created
-  T1.7 Verify Docker Stack: @high
-    ☐ `docker compose up -d` — all 5 containers start
-    ☐ Verify PostgreSQL: `SELECT 1` + `\dt` shows 12 tables
-    ☐ Verify Redis: `redis-cli ping` → PONG
-    ☐ Verify networks: `docker network ls | grep beru`
-    ☐ Check logs: no errors in `docker compose logs --tail=50`
+  ✔ T1.6 Database Schemas (Drizzle ORM): @critical @done(26-03-02 14:06)
+    ✔ Define 7 PostgreSQL enums in src/db/schema/enums.ts @done(26-03-02 14:06)
+    ✔ Define users table schema @done(26-03-02 14:06)
+    ✔ Define wallets table schema (with encryption fields) @done(26-03-02 14:06)
+    ✔ Define projects table schema (with soft-delete) @done(26-03-02 14:06)
+    ✔ Define project_features table schema (with JSONB config + stats) @done(26-03-02 14:06)
+    ✔ Define whitelist_entries table schema @done(26-03-02 14:06)
+    ✔ Define transactions table schema @done(26-03-02 14:06)
+    ✔ Define ephemeral_wallets table schema @done(26-03-02 14:06)
+    ✔ Define fee_ledger table schema @done(26-03-02 14:06)
+    ✔ Define referrals table schema @done(26-03-02 14:06)
+    ✔ Define referral_payouts table schema @done(26-03-02 14:06)
+    ✔ Define audit_log table schema @done(26-03-02 14:06)
+    ✔ Define waitlist_entries table schema @done(26-03-02 14:06)
+    ✔ Create barrel export src/db/schema/index.ts @done(26-03-02 14:06)
+    ✔ Define ShadowSellConfig TypeScript interface for JSONB @done(26-03-02 14:06)
+    ✔ Run: `npx drizzle-kit generate` → verify migration SQL @done(26-03-02 14:07)
+    ✔ Run: `npx drizzle-kit migrate` → verify 12 tables created in psql @done(26-03-02 14:07)
+    ✔ Verify all indexes from ARCHITECTURE.md §5.3 are created @done(26-03-02 14:07)
+  ✔ T1.7 Verify Docker Stack: @high @done(26-03-02 15:20)
+    ✔ `docker compose up -d` — all 5 containers start @done(26-03-02 15:20)
+    ✔ Verify PostgreSQL: `SELECT 1` + `\dt` shows 12 tables @done(26-03-02 15:20)
+    ✔ Verify Redis: `redis-cli ping` → PONG @done(26-03-02 15:20)
+    ✔ Verify networks: `docker network ls | grep beru` @done(26-03-02 15:20)
+    ✔ Check logs: no errors in `docker compose logs --tail=50` @done(26-03-02 15:20)
   T1.8 Database Connection Module: @critical
     ☐ Implement src/db/index.ts — Drizzle client init from config.db.url
     ☐ Import all schemas into Drizzle client
