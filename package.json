@@ -23,7 +23,11 @@
     "dev": "tsc-watch --onSuccess \"tsx ./src/main.ts\"",
     "start": "tsc && tsx ./src/main.ts",
     "start:force": "tsx ./src/main.ts",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
+    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate",
+    "db:push": "tsx node_modules/drizzle-kit/bin.cjs push",
+    "db:studio": "tsx node_modules/drizzle-kit/bin.cjs studio"
   },
   "dependencies": {
     "@grammyjs/auto-chat-action": "0.1.1",
