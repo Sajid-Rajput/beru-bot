@@ -53,7 +53,7 @@
     "pino": "9.6.0",
     "pino-pretty": "13.0.0",
     "postgres": "^3.4.8",
-    "tsx": "4.19.3",
+    "tsx": "4.21.0",
     "valibot": "0.42.1"
   },
   "devDependencies": {
