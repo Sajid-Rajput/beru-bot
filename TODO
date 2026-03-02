@@ -89,10 +89,10 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Implement src/db/index.ts — Drizzle client init from config.db.url @done(26-03-02 16:15)
     ✔ Import all schemas into Drizzle client @done(26-03-02 16:15)
     ✔ Verify: simple query `db.select().from(users)` returns empty [] @done(26-03-02 16:15)
-  T1.9 Logger & Constants Setup: @high
-    ☐ Implement src/utils/logger.ts — Pino with structured JSON (prod) / pretty (dev)
-    ☐ Implement src/utils/constants.ts — all numeric constants from §15.7
-    ☐ Implement src/utils/errors.ts — 6 custom error classes
+  ✔ T1.9 Logger & Constants Setup: @high @done(26-03-02 17:00)
+    ✔ Implement src/utils/logger.ts — Pino with structured JSON (prod) / pretty (dev) @done(26-03-02 17:00)
+    ✔ Implement src/utils/constants.ts — all numeric constants from §15.7 @done(26-03-02 17:00)
+    ✔ Implement src/utils/errors.ts — 6 custom error classes @done(26-03-02 17:00)
 
 Day 2 — March 2 — Core Services Layer: @critical
   Goal: CryptoService, WalletService, repositories, queues, validation all working.
