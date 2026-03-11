@@ -94,62 +94,62 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Implement src/utils/constants.ts — all numeric constants from §15.7 @done(26-03-02 17:00)
     ✔ Implement src/utils/errors.ts — 6 custom error classes @done(26-03-02 17:00)
 
-Day 2 — March 2 — Core Services Layer: @critical
+✔ Day 2 — March 2 — Core Services Layer: @critical @done(26-03-11 23:09)
   Goal: CryptoService, WalletService, repositories, queues, validation all working.
-  T2.1 CryptoService (Envelope Encryption): @critical
-    ☐ Implement MEK derivation: PBKDF2 600K iterations + SHA-512 + per-wallet salt
-    ☐ Implement encrypt: plaintext → random DEK → AES-256-GCM → wrapped output
-    ☐ Implement decrypt: wrapped → derive MEK → unwrap DEK → AES-256-GCM → plaintext
-    ☐ Implement memory safety: .fill(0) in finally blocks for all key buffers
-    ☐ Verify invariants 1-4 compliance
-    ☐ Write 5+ unit tests: roundtrip, wrong key, tampered data, different salts, memory zeroing
+  ✔ T2.1 CryptoService (Envelope Encryption): @critical @done(26-03-11 23:09)
+    ✔ Implement MEK derivation: PBKDF2 600K iterations + SHA-512 + per-wallet salt @done(26-03-11 23:09)
+    ✔ Implement encrypt: plaintext → random DEK → AES-256-GCM → wrapped output @done(26-03-11 23:09)
+    ✔ Implement decrypt: wrapped → derive MEK → unwrap DEK → AES-256-GCM → plaintext @done(26-03-11 23:09)
+    ✔ Implement memory safety: .fill(0) in finally blocks for all key buffers @done(26-03-11 23:09)
+    ✔ Verify invariants 1-4 compliance @done(26-03-11 23:09)
+    ✔ Write 5+ unit tests: roundtrip, wrong key, tampered data, different salts, memory zeroing @done(26-03-11 23:09)
   T2.2 WalletService: @critical
-    ☐ Implement generateWallet() — Keypair.generate() + encrypt + store
-    ☐ Implement importWallet(base58) — decode + validate + encrypt + store + zero input
-    ☐ Implement decryptWalletKey(walletId) — fetch + decrypt + audit log
-    ☐ Implement assignWalletToProject(walletId, projectId)
-    ☐ Implement getWalletsByUser(userId) — public keys only
-    ☐ Verify: import → decrypt roundtrip matches original key
-    ☐ Verify: audit log entry on every decrypt
+    ✔ Implement generateWallet() — Keypair.generate() + encrypt + store @done(26-03-11 23:09)
+    ✔ Implement importWallet(base58) — decode + validate + encrypt + store + zero input @done(26-03-11 23:09)
+    ✔ Implement decryptWalletKey(walletId) — fetch + decrypt + audit log @done(26-03-11 23:09)
+    ✔ Implement assignWalletToProject(walletId, projectId) @done(26-03-11 23:09)
+    ✔ Implement getWalletsByUser(userId) — public keys only @done(26-03-11 23:09)
+    ✔ Verify: import → decrypt roundtrip matches original key @done(26-03-11 23:09)
+    ✔ Verify: audit log entry on every decrypt @done(26-03-11 23:09)
   T2.3 Redis Connection & BullMQ Queues: @critical
-    ☐ Create Redis client with IORedis from config.redis.url
-    ☐ Handle reconnection events with logging
-    ☐ Define 5 BullMQ queues: sell-queue, notification-queue, monitor, recovery, fee-payout
-    ☐ Configure sell-queue: concurrency 5, limiter max 10/min
-    ☐ Export enqueueSellJob(data) producer method
-    ☐ Export enqueueNotification(data) producer method
-    ☐ Define TypeScript interfaces: SellJobData, NotificationData
-    ☐ Export Redis key pattern constants from §15.8
+    ✔ Create Redis client with IORedis from config.redis.url @done(26-03-11 23:09)
+    ✔ Handle reconnection events with logging @done(26-03-11 23:09)
+    ✔ Define 5 BullMQ queues: sell-queue, notification-queue, monitor, recovery, fee-payout @done(26-03-11 23:09)
+    ✔ Configure sell-queue: concurrency 5, limiter max 10/min @done(26-03-11 23:09)
+    ✔ Export enqueueSellJob(data) producer method @done(26-03-11 23:09)
+    ✔ Export enqueueNotification(data) producer method @done(26-03-11 23:09)
+    ✔ Define TypeScript interfaces: SellJobData, NotificationData @done(26-03-11 23:09)
+    ✔ Export Redis key pattern constants from §15.8 @done(26-03-11 23:09)
   T2.4 Repository Layer (Data Access): @critical
-    ☐ Implement user.repository.ts (findByTelegramId, create, updatePayoutWallet, findByReferralCode)
-    ☐ Implement wallet.repository.ts (create, findById, findByPublicKey, findByUserId, setAssigned)
-    ☐ Implement project.repository.ts (create, findById, findByUserIdAndMint, findAllByUserId, countByUserId, softDelete)
-    ☐ Implement project-feature.repository.ts (create, findByProjectId, updateStatus, updateConfig, setWatching, findAllWatching, updatePinnedMessageId, updateStats)
-    ☐ Implement whitelist.repository.ts (create, findByFeatureId, delete, countByFeatureId, isWhitelisted)
-    ☐ Implement transaction.repository.ts (create, updateStatus, findPendingByFeatureId)
-    ☐ Implement ephemeral-wallet.repository.ts (create, updateStatus, findRecoveryNeeded, incrementRecoveryAttempts)
-    ☐ Implement fee-ledger.repository.ts (create, findByTransactionId, findPendingPayouts)
-    ☐ Implement referral.repository.ts (create, findReferrer, findReferredUsers, getEarnings)
-    ☐ Implement audit-log.repository.ts (create, findByUserId)
-    ☐ Implement waitlist.repository.ts (join, findByTelegramId, getCount, findAllWaiting, markNotified)
-    ☐ Verify: soft-delete filter on all project queries (invariant 12)
-    ☐ Verify: basic CRUD against Docker PostgreSQL
+    ✔ Implement user.repository.ts (findByTelegramId, create, updatePayoutWallet, findByReferralCode) @done(26-03-11 23:09)
+    ✔ Implement wallet.repository.ts (create, findById, findByPublicKey, findByUserId, setAssigned) @done(26-03-11 23:09)
+    ✔ Implement project.repository.ts (create, findById, findByUserIdAndMint, findAllByUserId, countByUserId, softDelete) @done(26-03-11 23:09)
+    ✔ Implement project-feature.repository.ts (create, findByProjectId, updateStatus, updateConfig, setWatching, findAllWatching, updatePinnedMessageId, updateStats) @done(26-03-11 23:10)
+    ✔ Implement whitelist.repository.ts (create, findByFeatureId, delete, countByFeatureId, isWhitelisted) @done(26-03-11 23:10)
+    ✔ Implement transaction.repository.ts (create, updateStatus, findPendingByFeatureId) @done(26-03-11 23:10)
+    ✔ Implement ephemeral-wallet.repository.ts (create, updateStatus, findRecoveryNeeded, incrementRecoveryAttempts) @done(26-03-11 23:10)
+    ✔ Implement fee-ledger.repository.ts (create, findByTransactionId, findPendingPayouts) @done(26-03-11 23:10)
+    ✔ Implement referral.repository.ts (create, findReferrer, findReferredUsers, getEarnings) @done(26-03-11 23:10)
+    ✔ Implement audit-log.repository.ts (create, findByUserId) @done(26-03-11 23:10)
+    ✔ Implement waitlist.repository.ts (join, findByTelegramId, getCount, findAllWaiting, markNotified) @done(26-03-11 23:10)
+    ✔ Verify: soft-delete filter on all project queries (invariant 12) @done(26-03-11 23:10)
+    ✔ Verify: basic CRUD against Docker PostgreSQL @done(26-03-11 23:10)
   T2.5 Valibot Validation Schemas: @high
-    ☐ Validate Solana private key (base58, 64/88 bytes, valid keypair)
-    ☐ Validate Solana CA/public key (base58, 32-44 chars)
-    ☐ Validate Solana wallet address
-    ☐ Validate Min/Max Sell % (1-100, integer)
-    ☐ Validate Min MCAP (≥ 0, 0 = disabled)
-    ☐ Validate Min Buy Amount (≥ 0.001 SOL)
-    ☐ Validate custom percentage/SOL/USD inputs
-    ☐ Verify error messages match interface doc §9.1 exactly
+    ✔ Validate Solana private key (base58, 64/88 bytes, valid keypair) @done(26-03-11 23:10)
+    ✔ Validate Solana CA/public key (base58, 32-44 chars) @done(26-03-11 23:10)
+    ✔ Validate Solana wallet address @done(26-03-11 23:10)
+    ✔ Validate Min/Max Sell % (1-100, integer) @done(26-03-11 23:10)
+    ✔ Validate Min MCAP (≥ 0, 0 = disabled) @done(26-03-11 23:10)
+    ✔ Validate Min Buy Amount (≥ 0.001 SOL) @done(26-03-11 23:10)
+    ✔ Validate custom percentage/SOL/USD inputs @done(26-03-11 23:10)
+    ✔ Verify error messages match interface doc §9.1 exactly @done(26-03-11 23:10)
   T2.6 ProjectService & DexScreenerService: @high
-    ☐ Implement dexscreener.service.ts — fetchTokenInfo(mint) with 60s memory cache
-    ☐ Implement project.service.ts — createProject (check limits + duplicates + generate wallet + create feature + audit log)
-    ☐ Implement deleteProject (stop active feature + soft-delete + unassign wallet + audit log)
-    ☐ Implement getProjectDashboard (full project data with feature + config + stats)
-    ☐ Verify: MAX_PROJECTS_PER_USER (3) enforced
-    ☐ Verify: default config = { min_sell: 5, max_sell: 20, min_mcap: 0, min_buy: 0.1 }
+    ✔ Implement dexscreener.service.ts — fetchTokenInfo(mint) with 60s memory cache @done(26-03-11 23:10)
+    ✔ Implement project.service.ts — createProject (check limits + duplicates + generate wallet + create feature + audit log) @done(26-03-11 23:10)
+    ✔ Implement deleteProject (stop active feature + soft-delete + unassign wallet + audit log) @done(26-03-11 23:10)
+    ✔ Implement getProjectDashboard (full project data with feature + config + stats) @done(26-03-11 23:10)
+    ✔ Verify: MAX_PROJECTS_PER_USER (3) enforced @done(26-03-11 23:10)
+    ✔ Verify: default config = { min_sell: 5, max_sell: 20, min_mcap: 0, min_buy: 0.1 } @done(26-03-11 23:10)
 
 Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
   Goal: Start → Setup → Import → New Project → Key Display all working.
