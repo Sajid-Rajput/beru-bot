@@ -9,7 +9,6 @@ import { InlineKeyboard } from 'grammy'
 export function buildShadowSellHubKeyboard(): InlineKeyboard {
   return new InlineKeyboard()
     .text('👁️ My Projects', CB_MY_PROJECTS)
-    .row()
     .text('➕ New Project', CB_NEW_PROJECT)
     .row()
     .text('⚡ Quick Setup', CB_QUICK_SETUP)

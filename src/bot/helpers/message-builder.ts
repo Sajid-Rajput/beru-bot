@@ -41,19 +41,30 @@ export function buildHomeText(stats: HomeStats): string {
   ].join('\n')
 }
 
-export function buildShadowSellHubText(projectCount: number): string {
+export interface ShadowSellHubStats {
+  projectCount: number
+  totalSells: number
+  totalSolEarned: string
+}
+
+export function buildShadowSellHubText(stats: ShadowSellHubStats): string {
+  const { projectCount, totalSells, totalSolEarned } = stats
+  const sol = Number(totalSolEarned).toFixed(4)
+
   return [
     '🌑 <b>SHADOW SELL</b> 🌑',
     '',
     'Sell smart. Stay invisible.',
     '',
-    '👻 Every transaction routed through fresh wallets for full stealth',
-    '⛽ Gasless — just send your tokens, we handle the rest',
-    '🔗 Supports every Solana DEX &amp; launchpad',
+    'Paste a token CA, link a wallet with tokens + SOL for gas, and Shadow Sell auto-sells a % of every incoming buy through stealth wallets — your main wallet stays hidden.',
     '',
-    `👁️ Active projects: <b>${projectCount}</b>`,
+    '👻 Stealth routed  ·  🔗 All Solana DEXes  ·  ⚠️ Needs SOL for gas',
     '',
-    '💡 Paste a token CA to create a new project instantly.',
+    '━━━━━━━━━━━━━━━━━━━',
+    `Projects: <b>${projectCount}</b>  ·  Sells: <b>${totalSells}</b>  ·  Earned: <b>${sol} SOL</b>`,
+    '━━━━━━━━━━━━━━━━━━━',
+    '',
+    '💡 Paste a token CA below or tap ➕ New Project to get started.',
   ].join('\n')
 }
 
