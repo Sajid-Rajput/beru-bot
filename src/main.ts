@@ -6,7 +6,9 @@ import type { RunnerHandle } from '@grammyjs/runner'
 import process from 'node:process'
 import { createBot } from '#root/bot/index.js'
 import { config } from '#root/config.js'
+import { closeDb } from '#root/db/index.js'
 import { logger } from '#root/logger.js'
+import { closeRedis } from '#root/queue/redis.js'
 import { createServer, createServerManager } from '#root/server/index.js'
 import { run } from '@grammyjs/runner'
 
@@ -21,6 +23,8 @@ async function startPolling(config: PollingConfig) {
   onShutdown(async () => {
     logger.info('Shutdown')
     await runner?.stop()
+    await closeRedis().catch(err => logger.warn({ err }, 'closeRedis failed'))
+    await closeDb().catch(err => logger.warn({ err }, 'closeDb failed'))
   })
 
   await Promise.all([
@@ -62,6 +66,8 @@ async function startWebhook(config: WebhookConfig) {
   onShutdown(async () => {
     logger.info('Shutdown')
     await serverManager.stop()
+    await closeRedis().catch(err => logger.warn({ err }, 'closeRedis failed'))
+    await closeDb().catch(err => logger.warn({ err }, 'closeDb failed'))
   })
 
   // to prevent receiving updates before the bot is ready

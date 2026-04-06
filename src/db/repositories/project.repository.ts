@@ -39,6 +39,13 @@ export class ProjectRepository {
     })
   }
 
+  /** All non-deleted projects that reference a given wallet */
+  async findByWalletId(walletId: string): Promise<ProjectRecord[]> {
+    return db.query.projects.findMany({
+      where: and(eq(projects.walletId, walletId), active),
+    })
+  }
+
   /** Count of non-deleted projects — used to enforce MAX_PROJECTS_PER_USER */
   async countByUserId(userId: string): Promise<number> {
     const [row] = await db

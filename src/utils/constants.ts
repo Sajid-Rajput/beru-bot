@@ -98,5 +98,6 @@ export const redisKeys = {
   rate: (telegramId: number | string) => `rate:${telegramId}`,
   debounce: (telegramId: number | string, callbackData: string) =>
     `debounce:${telegramId}:${callbackData}`,
+  fileCache: () => 'bot:file_cache',
   waitlistCount: () => 'waitlist:count',
 } as const

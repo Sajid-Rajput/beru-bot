@@ -1,8 +1,8 @@
 import type { ShadowSellConfig } from '#root/db/schema/index.js'
 
 import { db } from '#root/db/index.js'
-import { projectFeatures } from '#root/db/schema/index.js'
-import { eq } from 'drizzle-orm'
+import { projectFeatures, projects } from '#root/db/schema/index.js'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 
 export type ProjectFeatureRecord = typeof projectFeatures.$inferSelect
 export type NewProjectFeature = typeof projectFeatures.$inferInsert
@@ -78,5 +78,21 @@ export class ProjectFeatureRepository {
       .update(projectFeatures)
       .set({ ...stats, updatedAt: new Date() })
       .where(eq(projectFeatures.id, id))
+  }
+
+  /** Aggregate sell stats across all active projects for a user. */
+  async getAggregateStatsByUserId(userId: string): Promise<{
+    totalSells: number
+    totalSolEarned: string
+  }> {
+    const [row] = await db
+      .select({
+        totalSells: sql<number>`coalesce(sum(${projectFeatures.totalSellCount}), 0)::int`,
+        totalSolEarned: sql<string>`coalesce(sum(${projectFeatures.totalSolReceived}), 0)::text`,
+      })
+      .from(projectFeatures)
+      .innerJoin(projects, eq(projectFeatures.projectId, projects.id))
+      .where(and(eq(projects.userId, userId), isNull(projects.deletedAt)))
+    return row ?? { totalSells: 0, totalSolEarned: '0' }
   }
 }

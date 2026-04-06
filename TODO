@@ -94,7 +94,7 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Implement src/utils/constants.ts — all numeric constants from §15.7 @done(26-03-02 17:00)
     ✔ Implement src/utils/errors.ts — 6 custom error classes @done(26-03-02 17:00)
 
-✔ Day 2 — March 2 — Core Services Layer: @critical @done(26-03-11 23:09)
+✔ Day 2 — March 2 — Core Services Layer: @critical @done(26-03-25 23:48)
   Goal: CryptoService, WalletService, repositories, queues, validation all working.
   ✔ T2.1 CryptoService (Envelope Encryption): @critical @done(26-03-11 23:09)
     ✔ Implement MEK derivation: PBKDF2 600K iterations + SHA-512 + per-wallet salt @done(26-03-11 23:09)
@@ -103,7 +103,7 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Implement memory safety: .fill(0) in finally blocks for all key buffers @done(26-03-11 23:09)
     ✔ Verify invariants 1-4 compliance @done(26-03-11 23:09)
     ✔ Write 5+ unit tests: roundtrip, wrong key, tampered data, different salts, memory zeroing @done(26-03-11 23:09)
-  T2.2 WalletService: @critical
+  ✔ T2.2 WalletService: @critical @done(26-03-25 23:47)
     ✔ Implement generateWallet() — Keypair.generate() + encrypt + store @done(26-03-11 23:09)
     ✔ Implement importWallet(base58) — decode + validate + encrypt + store + zero input @done(26-03-11 23:09)
     ✔ Implement decryptWalletKey(walletId) — fetch + decrypt + audit log @done(26-03-11 23:09)
@@ -111,7 +111,7 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Implement getWalletsByUser(userId) — public keys only @done(26-03-11 23:09)
     ✔ Verify: import → decrypt roundtrip matches original key @done(26-03-11 23:09)
     ✔ Verify: audit log entry on every decrypt @done(26-03-11 23:09)
-  T2.3 Redis Connection & BullMQ Queues: @critical
+  ✔ T2.3 Redis Connection & BullMQ Queues: @critical @done(26-03-25 23:47)
     ✔ Create Redis client with IORedis from config.redis.url @done(26-03-11 23:09)
     ✔ Handle reconnection events with logging @done(26-03-11 23:09)
     ✔ Define 5 BullMQ queues: sell-queue, notification-queue, monitor, recovery, fee-payout @done(26-03-11 23:09)
@@ -120,7 +120,7 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Export enqueueNotification(data) producer method @done(26-03-11 23:09)
     ✔ Define TypeScript interfaces: SellJobData, NotificationData @done(26-03-11 23:09)
     ✔ Export Redis key pattern constants from §15.8 @done(26-03-11 23:09)
-  T2.4 Repository Layer (Data Access): @critical
+  ✔ T2.4 Repository Layer (Data Access): @critical @done(26-03-25 23:47)
     ✔ Implement user.repository.ts (findByTelegramId, create, updatePayoutWallet, findByReferralCode) @done(26-03-11 23:09)
     ✔ Implement wallet.repository.ts (create, findById, findByPublicKey, findByUserId, setAssigned) @done(26-03-11 23:09)
     ✔ Implement project.repository.ts (create, findById, findByUserIdAndMint, findAllByUserId, countByUserId, softDelete) @done(26-03-11 23:09)
@@ -134,7 +134,7 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Implement waitlist.repository.ts (join, findByTelegramId, getCount, findAllWaiting, markNotified) @done(26-03-11 23:10)
     ✔ Verify: soft-delete filter on all project queries (invariant 12) @done(26-03-11 23:10)
     ✔ Verify: basic CRUD against Docker PostgreSQL @done(26-03-11 23:10)
-  T2.5 Valibot Validation Schemas: @high
+  ✔ T2.5 Valibot Validation Schemas: @high @done(26-03-25 23:47)
     ✔ Validate Solana private key (base58, 64/88 bytes, valid keypair) @done(26-03-11 23:10)
     ✔ Validate Solana CA/public key (base58, 32-44 chars) @done(26-03-11 23:10)
     ✔ Validate Solana wallet address @done(26-03-11 23:10)
@@ -143,7 +143,7 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Validate Min Buy Amount (≥ 0.001 SOL) @done(26-03-11 23:10)
     ✔ Validate custom percentage/SOL/USD inputs @done(26-03-11 23:10)
     ✔ Verify error messages match interface doc §9.1 exactly @done(26-03-11 23:10)
-  T2.6 ProjectService & DexScreenerService: @high
+  ✔ T2.6 ProjectService & DexScreenerService: @high @done(26-03-25 23:47)
     ✔ Implement dexscreener.service.ts — fetchTokenInfo(mint) with 60s memory cache @done(26-03-11 23:10)
     ✔ Implement project.service.ts — createProject (check limits + duplicates + generate wallet + create feature + audit log) @done(26-03-11 23:10)
     ✔ Implement deleteProject (stop active feature + soft-delete + unassign wallet + audit log) @done(26-03-11 23:10)
@@ -153,37 +153,37 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
 
 Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
   Goal: Start → Setup → Import → New Project → Key Display all working.
-  ✔ T3.1 Bot Initialization & Middleware Stack: @critical @done(26-03-02)
-    ✔ Create src/bot/index.ts — Grammy.js Bot init with token @done(26-03-02)
-    ✔ Install plugins: hydrate, parse-mode, conversations @done(26-03-02)
-    ✔ Define session type: lastNavMessageId, inputState, user @done(26-03-02)
-    ✔ Register middleware stack in order: rate-limit → debounce → user-resolution → message-mgmt @done(26-03-02)
-    ✔ Register all command handlers @done(26-03-02)
-    ✔ Register all callback query handlers @done(26-03-02)
-    ✔ Register text message handler (smart detection) @done(26-03-02)
-    ✔ Export createBot() factory function @done(26-03-02)
-    ✔ Verify: bot responds to /start @done(26-03-02)
-  T3.2 Start Command & Welcome/Home Screens: @critical
-    ☐ Implement deep link parsing: ref_{id}, wl_{id}, website, community, organic
-    ☐ Implement SCR_WELCOME (first-time users): video + message + inline keyboard
-    ☐ Implement SCR_HOME (returning users): stats + same keyboard
-    ☐ Implement referral creation on ref_ deep link (tier 1 + tier 2)
-    ☐ Build home.keyboard.ts: Quick Setup | My Projects + New Project | Wallets | Referrals + Support
-    ☐ Store lastNavMessageId in session
-    ☐ Delete prior navigation message on new send
-  T3.3 Message Management Middleware: @critical
+  ☐ T3.1 Bot Initialization & Middleware Stack: @critical
+    ✔ Create src/bot/index.ts — Grammy.js Bot init with token @done(26-03-26 01:34)
+    ✔ Install plugins: hydrate, parse-mode, conversations @done(26-03-26 01:34)
+    ✔ Define session type: lastNavMessageId, inputState, user @done(26-03-26 01:34)
+    ✔ Register middleware stack in order: rate-limit → debounce → user-resolution → message-mgmt @done(26-03-26 01:34)
+    ✔ Register all command handlers @done(26-03-26 01:34)
+    ✔ Register all callback query handlers @done(26-03-26 01:34)
+    ✔ Register text message handler (smart detection) @done(26-03-26 01:34)
+    ✔ Export createBot() factory function @done(26-03-26 01:34)
+    ✔ Verify: bot responds to /start @done(26-03-26 01:34)
+  ☐ T3.2 Start Command & Welcome/Home Screens: @critical
+    ✔ Implement deep link parsing: ref_{id}, wl_{id}, website, community, organic @done(26-03-26 23:08)
+    ✔ Implement SCR_WELCOME (first-time users): video + message + inline keyboard @done(26-03-26 23:08)
+    ✔ Implement SCR_HOME (returning users): stats + same keyboard @done(26-03-26 23:08)
+    ✔ Implement referral creation on ref_ deep link (tier 1 + tier 2) @done(26-03-26 23:08)
+    ✔ Build home.keyboard.ts: Quick Setup | My Projects + New Project | Wallets | Referrals + Support @done(26-03-26 23:08)
+    ✔ Store lastNavMessageId in session @done(26-03-26 23:08)
+    ✔ Delete prior navigation message on new send @done(26-03-26 23:08)
+  ☐ T3.3 Message Management Middleware: @critical
     ☐ Implement delete-previous-nav behavior (delete old → send new → store ID)
     ☐ Implement sendNavigationMessage() helper
     ☐ Implement sendTransientMessage(ctx, text, deleteAfterMs) with setTimeout
     ☐ Implement sendSensitiveMessage(ctx, text, kb, deleteAfterMs) with spoiler
     ☐ Implement sendPinnedStatusMessage(ctx, text) + updatePinnedStatusMessage()
     ☐ Implement immediate deletion of user-pasted private keys (invariant 7)
-  T3.4 Rate Limit & Debounce Middlewares: @high
+  ☐ T3.4 Rate Limit & Debounce Middlewares: @high
     ☐ Implement rate-limit.ts: Redis INCR on rate:{telegramId}, reject >30/min
     ☐ Implement debounce.ts: Redis SET NX on debounce:{telegramId}:{cb}, TTL 1s
     ☐ Verify: rapid button clicks are swallowed after first
     ☐ Verify: rate limit triggers warning message
-  T3.5 Quick Setup & Wallet Import Flow: @critical
+  ☐ T3.5 Quick Setup & Wallet Import Flow: @critical
     ☐ Implement SCR_QUICK_SETUP screen + inputState = import_wallet
     ☐ Implement private key input: IMMEDIATELY delete user's message
     ☐ Validate with Valibot schema
@@ -191,7 +191,7 @@ Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
     ☐ Handle already-exists error
     ☐ Implement SCR_WALLET_IMPORTED with public key display
     ☐ Clear session.inputState after completion
-  T3.6 Smart CA Detection Middleware: @critical
+  ☐ T3.6 Smart CA Detection Middleware: @critical
     ☐ Implement priority-ordered text handler: command → CA → input state → fallback
     ☐ CA regex: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/
     ☐ Delete user's CA message immediately
@@ -199,7 +199,7 @@ Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
     ☐ New CA → enter new project flow
     ☐ Input state routing (config values, private keys, etc.)
     ☐ Fallback: silently ignore
-  T3.7 New Project Flow (CA → Token Found → Confirm): @critical
+  ☐ T3.7 New Project Flow (CA → Token Found → Confirm): @critical
     ☐ Implement SCR_NEW_PROJECT_CA_INPUT + project count check (max 3)
     ☐ Call DexScreenerService.fetchTokenInfo(mint)
     ☐ Implement SCR_TOKEN_FOUND with token info display
@@ -207,7 +207,7 @@ Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
     ☐ Implement confirm: ProjectService.createProject()
     ☐ Generate project wallet + encrypt
     ☐ Navigate to key display screen
-  T3.8 Project Key Display Screen: @critical
+  ☐ T3.8 Project Key Display Screen: @critical
     ☐ Decrypt project wallet key (one-time display)
     ☐ Send with Telegram spoiler: ||{privateKey}||
     ☐ Include public key in plain text + warning

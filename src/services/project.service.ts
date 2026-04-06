@@ -7,7 +7,6 @@ import { ProjectRepository } from '#root/db/repositories/project.repository.js'
 import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
 import { logger } from '#root/logger.js'
 import { dexscreenerService } from '#root/services/dexscreener.service.js'
-import { WalletService } from '#root/services/wallet.service.js'
 import { BeruError } from '#root/utils/errors.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -51,7 +50,6 @@ export class ProjectService {
   private readonly featureRepo = new ProjectFeatureRepository()
   private readonly walletRepo = new WalletRepository()
   private readonly auditRepo = new AuditLogRepository()
-  private readonly walletService = new WalletService()
 
   // ── Create ──────────────────────────────────────────────────────────────────
 
@@ -63,7 +61,7 @@ export class ProjectService {
    * Invariants enforced:
    *  - Max 3 projects per user (invariant 10)
    *  - No duplicate (userId, tokenMint) pairs (invariant 11)
-   *  - Wallet must belong to the user and be unassigned
+   *  - Wallet must belong to the user (one wallet can back multiple projects)
    */
   async createProject(
     userId: string,
@@ -85,13 +83,10 @@ export class ProjectService {
       throw new ProjectError('You already have a project tracking that token.')
     }
 
-    // 3. Validate wallet ownership and availability
+    // 3. Validate wallet ownership (wallets are reusable across projects)
     const wallet = await this.walletRepo.findById(walletId)
     if (!wallet || wallet.userId !== userId) {
       throw new ProjectError('Wallet not found or does not belong to your account.')
-    }
-    if (wallet.isAssigned) {
-      throw new ProjectError('That wallet is already assigned to another project.')
     }
 
     // 4. Fetch token metadata from DexScreener (best-effort — project is still
@@ -101,7 +96,7 @@ export class ProjectService {
     const tokenSymbol = tokenInfo?.symbol ?? tokenMint.slice(0, 6).toUpperCase()
     const dexUrl = tokenInfo?.dexUrl ?? null
 
-    // 5–8. Sequential DB writes: project → feature → wallet assignment → audit log
+    // 5–7. Sequential DB writes: project → feature → audit log
     const finalConfig: ShadowSellConfig = { ...DEFAULT_SHADOW_SELL_CONFIG, ...config }
 
     const project = await this.projectRepo.create({
@@ -119,8 +114,6 @@ export class ProjectService {
       status: 'idle',
       config: finalConfig,
     })
-
-    await this.walletRepo.setAssigned(walletId, true, project.id)
 
     await this.auditRepo.create({
       userId,
@@ -142,7 +135,8 @@ export class ProjectService {
   // ── Delete ──────────────────────────────────────────────────────────────────
 
   /**
-   * Soft-delete a project and release its assigned wallet.
+   * Soft-delete a project. The wallet is left untouched — it can be reused
+   * by other projects the user already has or creates later.
    *
    * Will throw if the feature is currently active (watching or executing) —
    * the caller must pause/stop the feature before deleting.
@@ -161,10 +155,6 @@ export class ProjectService {
     }
 
     await this.projectRepo.softDelete(projectId)
-
-    if (project.walletId) {
-      await this.walletService.unassignWallet(project.walletId)
-    }
 
     await this.auditRepo.create({
       userId,

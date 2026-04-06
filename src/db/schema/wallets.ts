@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core'
+import { index, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core'
 import { walletSourceEnum } from './enums.js'
 import { users } from './users.js'
 
@@ -19,8 +19,6 @@ export const wallets = pgTable('wallets', {
   dekSalt: varchar('dek_salt', { length: 64 }).notNull(),
 
   source: walletSourceEnum('source').notNull(),
-  isAssigned: boolean('is_assigned').notNull().default(false),
-  assignedProjectId: uuid('assigned_project_id'),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => ({

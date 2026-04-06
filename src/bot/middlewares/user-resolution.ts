@@ -10,21 +10,19 @@ const userRepo = new UserRepository()
 /**
  * Ensures a Telegram user record exists in the database on every interaction.
  *
- * - If `ctx.session.user` is already populated (cached), skips the DB lookup.
+ * - If `ctx.session.user` is cached, re-verifies the row still exists (one
+ *   cheap indexed lookup) — protects against dangling session pointers
+ *   after a DB reset / row deletion.
  * - Otherwise fetches the user by telegramId; creates one on first encounter.
  * - Stores the lightweight `{ id, telegramId }` reference in session.
  *
  * Should be registered after the session middleware in the middleware chain.
  */
 export const userResolution: MiddlewareFn<Context> = async (ctx, next) => {
-  // Channel posts (and other updates without a sender) have no from
-  if (!ctx.from) {
-    await next()
-    return
-  }
-
-  // Fast path: already resolved this session
-  if (ctx.session.user) {
+  // Channel posts (and other updates without a sender) have no from.
+  // Service messages (e.g. pinned_message) carry the bot itself as `from` —
+  // never create a DB user for a bot account.
+  if (!ctx.from || ctx.from.is_bot) {
     await next()
     return
   }
@@ -32,6 +30,21 @@ export const userResolution: MiddlewareFn<Context> = async (ctx, next) => {
   const telegramId = ctx.from.id
 
   try {
+    // Verify cached reference still resolves; fall through to re-create on
+    // miss (stale session after DB reset, manual row deletion, etc.).
+    if (ctx.session.user) {
+      const cached = await userRepo.findById(ctx.session.user.id)
+      if (cached) {
+        await next()
+        return
+      }
+      log.warn(
+        { telegramId, staleUserId: ctx.session.user.id },
+        'Cached session user not found in DB — re-resolving',
+      )
+      ctx.session.user = undefined
+    }
+
     let user = await userRepo.findByTelegramId(telegramId)
 
     if (!user) {
@@ -43,10 +56,11 @@ export const userResolution: MiddlewareFn<Context> = async (ctx, next) => {
         firstName: ctx.from.first_name ?? null,
         referralCode,
       })
+      ctx.isNewUser = true
       log.info({ telegramId, userId: user.id }, 'New user created')
     }
 
-    // Cache in session — avoids a DB round-trip for subsequent handlers
+    // Cache in session — cache is re-verified on each request via findById
     ctx.session.user = { id: user.id, telegramId: user.telegramId }
   }
   catch (err) {

@@ -11,6 +11,7 @@ import { createLogger } from '#root/utils/logger.js'
 import { Keypair } from '@solana/web3.js'
 import bs58 from 'bs58'
 import { CryptoService } from './crypto.service.js'
+import { SolanaRpcService } from './solana-rpc.service.js'
 
 const bs58Decode = (s: string) => bs58.decode(s)
 const bs58Encode = (b: Uint8Array) => bs58.encode(b)
@@ -28,11 +29,13 @@ export class WalletService {
   private readonly crypto: CryptoService
   private readonly walletRepo: WalletRepository
   private readonly auditRepo: AuditLogRepository
+  private readonly rpc: SolanaRpcService
 
-  constructor() {
+  constructor(rpc?: SolanaRpcService) {
     this.crypto = new CryptoService(config.masterKeySecret)
     this.walletRepo = new WalletRepository()
     this.auditRepo = new AuditLogRepository()
+    this.rpc = rpc ?? new SolanaRpcService()
   }
 
   /**
@@ -62,8 +65,6 @@ export class WalletService {
         dekAuthTag: payload.dekAuthTag,
         dekSalt: payload.dekSalt,
         source: 'generated',
-        isAssigned: false,
-        assignedProjectId: null,
       })
       log.info({ userId, walletId: wallet.id, publicKey }, 'Wallet generated')
       return wallet
@@ -136,8 +137,6 @@ export class WalletService {
         dekAuthTag: payload.dekAuthTag,
         dekSalt: payload.dekSalt,
         source: 'imported',
-        isAssigned: false,
-        assignedProjectId: null,
       })
 
       log.info({ userId, walletId: wallet.id, publicKey }, 'Wallet imported')
@@ -192,22 +191,6 @@ export class WalletService {
   }
 
   /**
-   * Assigns a wallet to a project.
-   * Sets `is_assigned = true` and `assigned_project_id = projectId`.
-   */
-  async assignWallet(walletId: string, projectId: string): Promise<void> {
-    await this.walletRepo.setAssigned(walletId, true, projectId)
-  }
-
-  /**
-   * Unassigns a wallet from its current project.
-   * Clears `is_assigned` and `assigned_project_id`.
-   */
-  async unassignWallet(walletId: string): Promise<void> {
-    await this.walletRepo.setAssigned(walletId, false, null)
-  }
-
-  /**
    * Lists all wallets for a user.
    * Returns full records — callers should expose only `publicKey` to users.
    */
@@ -215,9 +198,23 @@ export class WalletService {
     return this.walletRepo.findByUserId(userId)
   }
 
-  /** Returns wallets that are not yet assigned to any project */
-  async getUnassignedWallets(userId: string): Promise<WalletRecord[]> {
+  /**
+   * Returns wallets owned by the user that currently hold a positive balance
+   * of the given SPL token mint. Uses the injected SolanaRpcService;
+   * wallets whose balance lookup fails are silently treated as zero-balance
+   * so a flaky RPC never blocks project creation.
+   */
+  async listWalletsHoldingToken(
+    userId: string,
+    tokenMint: string,
+  ): Promise<Array<{ wallet: WalletRecord, balance: number }>> {
     const all = await this.walletRepo.findByUserId(userId)
-    return all.filter(w => !w.isAssigned)
+    const results = await Promise.all(
+      all.map(async (wallet) => {
+        const balance = await this.rpc.getTokenBalance(wallet.publicKey, tokenMint)
+        return { wallet, balance }
+      }),
+    )
+    return results.filter(r => r.balance > 0)
   }
 }

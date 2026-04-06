@@ -6,6 +6,7 @@ import type { HydrateFlavor } from '@grammyjs/hydrate'
 import type { I18nFlavor } from '@grammyjs/i18n'
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Context as DefaultContext, SessionFlavor } from 'grammy'
+import type { InlineKeyboardMarkup, Message } from 'grammy/types'
 
 /** Shape of the awaited-input tracking stored in session */
 export interface InputState {
@@ -35,11 +36,58 @@ export interface SessionData {
   inputState?: InputState
   /** Cached DB user reference — populated by user-resolution middleware */
   user?: SessionUser
+  /**
+   * Token mint the user is currently creating a project for — kept in session
+   *  so wallet-choice callbacks stay within the 64-byte callback-data limit.
+   */
+  pendingNewProjectMint?: string
+}
+
+/** Options for sendNavigationMessage */
+export interface SendNavigationOptions {
+  reply_markup?: InlineKeyboardMarkup
+  /** Video asset key (e.g. 'video:introduction') — if provided, sends animation instead of text */
+  videoAssetKey?: string
+}
+
+/** Message management helpers injected by message-management middleware */
+interface MessageManagementFlavor {
+  /**
+   * Delete the previous navigation message, send a new one, and store its ID
+   * in session.lastNavMessageId. Only 1 nav message visible at a time.
+   */
+  sendNavigationMessage: (text: string, options?: SendNavigationOptions) => Promise<Message>
+  /**
+   * Send a transient message that auto-deletes after `deleteAfterMs` (default 60s).
+   * Does NOT replace the navigation message.
+   */
+  sendTransientMessage: (text: string, deleteAfterMs?: number) => Promise<Message>
+  /**
+   * Send a sensitive message (e.g. private key) with Telegram spoiler formatting.
+   * Auto-deletes after `deleteAfterMs` (default 24h). Includes inline keyboard if provided.
+   */
+  sendSensitiveMessage: (text: string, replyMarkup?: InlineKeyboardMarkup, deleteAfterMs?: number) => Promise<Message>
+  /**
+   * Send a new pinned status message (e.g. Shadow Sell active status).
+   * Pins the message to the chat.
+   */
+  sendPinnedStatusMessage: (text: string) => Promise<Message>
+  /**
+   * Edit an existing pinned status message in-place.
+   */
+  updatePinnedStatusMessage: (messageId: number, text: string) => Promise<void>
+  /**
+   * Delete the user's current message (the one that triggered this update).
+   * Silently ignores errors (message already deleted, etc.).
+   */
+  deleteUserMessage: () => Promise<void>
 }
 
 interface ExtendedContextFlavor {
   logger: Logger
   config: Config
+  /** Set to `true` by user-resolution middleware when a brand-new user is created */
+  isNewUser?: boolean
 }
 
 export type Context = ConversationFlavor<
@@ -47,6 +95,7 @@ export type Context = ConversationFlavor<
     HydrateFlavor<
       DefaultContext &
       ExtendedContextFlavor &
+      MessageManagementFlavor &
       SessionFlavor<SessionData> &
       I18nFlavor &
       AutoChatActionFlavor

@@ -14,6 +14,12 @@ export class WhitelistRepository {
     return entry!
   }
 
+  async findById(id: string): Promise<WhitelistRecord | undefined> {
+    return db.query.whitelistEntries.findFirst({
+      where: eq(whitelistEntries.id, id),
+    })
+  }
+
   async findByFeatureId(projectFeatureId: string): Promise<WhitelistRecord[]> {
     return db.query.whitelistEntries.findMany({
       where: eq(whitelistEntries.projectFeatureId, projectFeatureId),

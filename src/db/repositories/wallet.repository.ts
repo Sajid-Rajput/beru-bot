@@ -23,24 +23,4 @@ export class WalletRepository {
   async findByUserId(userId: string): Promise<WalletRecord[]> {
     return db.query.wallets.findMany({ where: eq(wallets.userId, userId) })
   }
-
-  /**
-   * Set or clear wallet assignment.
-   * @param id         Wallet UUID
-   * @param assigned   true → assign, false → unassign
-   * @param projectId  UUID when assigning, null when unassigning
-   */
-  async setAssigned(
-    id: string,
-    assigned: boolean,
-    projectId: string | null,
-  ): Promise<void> {
-    await db
-      .update(wallets)
-      .set({
-        isAssigned: assigned,
-        assignedProjectId: projectId,
-      })
-      .where(eq(wallets.id, id))
-  }
 }

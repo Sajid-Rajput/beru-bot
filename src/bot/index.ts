@@ -5,13 +5,25 @@ import type { BotConfig } from 'grammy'
 import { adminFeature } from '#root/bot/features/admin.js'
 import { languageFeature } from '#root/bot/features/language.js'
 import { unhandledFeature } from '#root/bot/features/unhandled.js'
-import { welcomeFeature } from '#root/bot/features/welcome.js'
+import { configScreensHandler } from '#root/bot/handlers/config-screens.js'
+import { dashboardHandler } from '#root/bot/handlers/dashboard.js'
+import { deleteProjectHandler } from '#root/bot/handlers/delete-project.js'
 import { errorHandler } from '#root/bot/handlers/error.js'
+import { homeHandler } from '#root/bot/handlers/home.js'
+import { myProjectsHandler } from '#root/bot/handlers/my-projects.js'
+import { newProjectHandler } from '#root/bot/handlers/new-project.js'
+import { quickSetupHandler } from '#root/bot/handlers/quick-setup.js'
+import { referralsHandler } from '#root/bot/handlers/referrals.js'
+import { shadowSellHandler } from '#root/bot/handlers/shadow-sell.js'
+import { startHandler } from '#root/bot/handlers/start.js'
+import { walletsHandler } from '#root/bot/handlers/wallets.js'
+import { whitelistHandler } from '#root/bot/handlers/whitelist.js'
 import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
 import { debounce } from '#root/bot/middlewares/debounce.js'
 import { messageManagement } from '#root/bot/middlewares/message-management.js'
 import { rateLimit } from '#root/bot/middlewares/rate-limit.js'
 import { session } from '#root/bot/middlewares/session.js'
+import { smartDetection } from '#root/bot/middlewares/smart-detection.js'
 import { updateLogger } from '#root/bot/middlewares/update-logger.js'
 import { userResolution } from '#root/bot/middlewares/user-resolution.js'
 import { redis } from '#root/queue/redis.js'
@@ -92,7 +104,19 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(messageManagement) // 4. Delete-nav + sendNavMsg helpers on ctx
 
   // Handlers
-  protectedBot.use(welcomeFeature)
+  protectedBot.use(startHandler)
+  protectedBot.use(homeHandler)
+  protectedBot.use(shadowSellHandler)
+  protectedBot.use(myProjectsHandler)
+  protectedBot.use(dashboardHandler)
+  protectedBot.use(configScreensHandler)
+  protectedBot.use(whitelistHandler)
+  protectedBot.use(deleteProjectHandler)
+  protectedBot.use(walletsHandler)
+  protectedBot.use(referralsHandler)
+  protectedBot.use(quickSetupHandler)
+  protectedBot.use(newProjectHandler)
+  protectedBot.use(smartDetection) // Must come after explicit handlers, before unhandled
   protectedBot.use(adminFeature)
   if (isMultipleLocales)
     protectedBot.use(languageFeature)
