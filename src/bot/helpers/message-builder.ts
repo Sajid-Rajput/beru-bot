@@ -1,17 +1,53 @@
-export function buildWelcomeText(): string {
+// ── Shared Types & Constants ─────────────────────────────────────────────
+
+export interface ProjectListItem {
+  id: string
+  tokenName: string | null
+  tokenSymbol: string | null
+  tokenMint: string
+  status: string
+}
+
+const STATUS_EMOJI: Record<string, string> = {
+  idle: '⏸️',
+  pending: '⏳',
+  watching: '👁️',
+  executing: '⚡',
+  completed: '✅',
+  stopped: '🛑',
+  error: '❌',
+}
+
+export interface WelcomeTextOptions {
+  isReturning?: boolean
+  firstName?: string
+}
+
+export function buildWelcomeText(opts: WelcomeTextOptions = {}): string {
+  const { isReturning = false, firstName } = opts
+  const headline = isReturning
+    ? '🏰 <b>WELCOME BACK, MONARCH</b> 🏰'
+    : '🏰 <b>ARISE, SHADOW MONARCH</b> 🏰'
+  const intro = isReturning && firstName
+    ? `${escapeHtml(firstName)}, your shadow army stands ready. Let's deploy your first soldier.`
+    : 'Beru Bot is your strongest soldier on Solana — built for speed, stealth, and precision.'
+  const closer = isReturning
+    ? '💡 Tap 💼 Wallets to import your first wallet, then paste a token CA to begin.'
+    : '💡 Paste any token CA below to begin, or tap a button.'
+
   return [
-    '🏰 <b>ARISE, SHADOW MONARCH</b> 🏰',
+    headline,
     '',
-    'Beru Bot is your strongest soldier on Solana — built for speed, stealth, and precision.',
+    intro,
     '',
     '🌑 <b>Shadow Sell</b> — Sell smart. Stay invisible.',
-    '👻 Every transaction routed through fresh wallets for full stealth',
-    '⛽ Gasless — just send your tokens, we handle the rest',
+    '👻 Every transaction routed through stealth wallets',
     '🔗 Supports every Solana DEX &amp; launchpad',
+    '⚠️ Needs SOL for gas in your project wallet',
     '',
     '🎁 Invite your friends and earn from every fee they generate.',
     '',
-    '💡 Paste any token CA below to begin, or tap a button.',
+    closer,
   ].join('\n')
 }
 
@@ -42,16 +78,17 @@ export function buildHomeText(stats: HomeStats): string {
 }
 
 export interface ShadowSellHubStats {
-  projectCount: number
   totalSells: number
   totalSolEarned: string
+  statusCounts: Record<string, number>
 }
 
 export function buildShadowSellHubText(stats: ShadowSellHubStats): string {
-  const { projectCount, totalSells, totalSolEarned } = stats
+  const { totalSells, totalSolEarned, statusCounts } = stats
   const sol = Number(totalSolEarned).toFixed(4)
+  const totalProjects = Object.values(statusCounts).reduce((a, b) => a + b, 0)
 
-  return [
+  const lines = [
     '🌑 <b>SHADOW SELL</b> 🌑',
     '',
     'Sell smart. Stay invisible.',
@@ -61,11 +98,26 @@ export function buildShadowSellHubText(stats: ShadowSellHubStats): string {
     '👻 Stealth routed  ·  🔗 All Solana DEXes  ·  ⚠️ Needs SOL for gas',
     '',
     '━━━━━━━━━━━━━━━━━━━',
-    `Projects: <b>${projectCount}</b>  ·  Sells: <b>${totalSells}</b>  ·  Earned: <b>${sol} SOL</b>`,
+    `Projects: <b>${totalProjects}</b>  ·  Sells: <b>${totalSells}</b>  ·  Earned: <b>${sol} SOL</b>`,
+  ]
+
+  if (totalProjects > 0) {
+    const parts: string[] = []
+    for (const [status, emoji] of Object.entries(STATUS_EMOJI)) {
+      const count = statusCounts[status]
+      if (count && count > 0)
+        parts.push(`${emoji} ${count} ${status}`)
+    }
+    if (parts.length > 0)
+      lines.push(parts.join('  ·  '))
+  }
+
+  lines.push(
     '━━━━━━━━━━━━━━━━━━━',
     '',
     '💡 Paste a token CA below or tap ➕ New Project to get started.',
-  ].join('\n')
+  )
+  return lines.join('\n')
 }
 
 // ── Quick Setup Screens ──────────────────────────────────────────────────
@@ -243,24 +295,6 @@ export function buildWalletPickerText(
 }
 
 // ── My Projects Screen ───────────────────────────────────────────────────
-
-export interface ProjectListItem {
-  id: string
-  tokenName: string | null
-  tokenSymbol: string | null
-  tokenMint: string
-  status: string
-}
-
-const STATUS_EMOJI: Record<string, string> = {
-  idle: '⏸️',
-  pending: '⏳',
-  watching: '👁️',
-  executing: '⚡',
-  completed: '✅',
-  stopped: '🛑',
-  error: '❌',
-}
 
 export function buildMyProjectsText(projects: ProjectListItem[]): string {
   const lines = [
@@ -654,7 +688,11 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
 }
 
-function formatMcap(value: number): string {
+export function formatMcap(value: number): string {
+  if (value >= 1_000_000_000_000)
+    return `${(value / 1_000_000_000_000).toFixed(1)}T`
+  if (value >= 1_000_000_000)
+    return `${(value / 1_000_000_000).toFixed(1)}B`
   if (value >= 1_000_000)
     return `${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1_000)

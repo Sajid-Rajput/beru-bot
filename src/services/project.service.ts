@@ -113,6 +113,7 @@ export class ProjectService {
       featureType: 'shadow_sell',
       status: 'idle',
       config: finalConfig,
+      lastMarketCapUsd: tokenInfo?.marketCapUsd?.toString() ?? null,
     })
 
     await this.auditRepo.create({

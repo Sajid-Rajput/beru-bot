@@ -8,9 +8,9 @@ import {
   CB_PROJECT_WALLET_PICK_PREFIX,
   CB_SELECT_PROJECT_PREFIX,
 } from '#root/bot/callback-data/index.js'
+import { renderDashboard } from '#root/bot/handlers/dashboard.js'
 import { logHandle } from '#root/bot/helpers/logging.js'
 import {
-  buildHomeText,
   buildNewProjectCaInputText,
   buildProjectKeyText,
   buildProjectLimitText,
@@ -24,7 +24,6 @@ import {
   buildWalletChoiceKeyboard,
   buildWalletPickerKeyboard,
 } from '#root/bot/keyboards/new-project.keyboard.js'
-import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.repository.js'
 import { ProjectRepository } from '#root/db/repositories/project.repository.js'
 import { dexscreenerService } from '#root/services/dexscreener.service.js'
 import { ProjectService } from '#root/services/project.service.js'
@@ -35,7 +34,6 @@ import { Composer, InlineKeyboard } from 'grammy'
 
 const log = createLogger('NewProjectHandler')
 const projectRepo = new ProjectRepository()
-const featureRepo = new ProjectFeatureRepository()
 const projectService = new ProjectService()
 const walletService = new WalletService()
 
@@ -93,7 +91,7 @@ feature.callbackQuery(CB_NEW_PROJECT, logHandle('cb-new-project'), async (ctx) =
   const projectCount = await projectRepo.countByUserId(ctx.session.user.id)
   if (projectCount >= MAX_PROJECTS_PER_USER) {
     await ctx.sendNavigationMessage(buildProjectLimitText(), {
-      reply_markup: buildHomeKeyboard(ctx.config, projectCount),
+      reply_markup: buildHomeKeyboard(ctx.config),
     })
     return
   }
@@ -233,6 +231,12 @@ feature.callbackQuery(CB_PROJECT_WALLET_GENERATE, logHandle('cb-pwg'), async (ct
       ctx.session.user.id,
     )
 
+    // Delete the previous navigation message (wallet choice screen)
+    if (ctx.session.lastNavMessageId && ctx.chat) {
+      await ctx.api.deleteMessage(ctx.chat.id, ctx.session.lastNavMessageId).catch(() => {})
+      ctx.session.lastNavMessageId = undefined
+    }
+
     const keyMsg = await ctx.sendSensitiveMessage(
       buildProjectKeyText(
         project.tokenName ?? tokenMint,
@@ -263,7 +267,7 @@ feature.callbackQuery(CB_PROJECT_WALLET_GENERATE, logHandle('cb-pwg'), async (ct
   }
 })
 
-// ── Key Acknowledged — navigate home ──────────────────────────────────────
+// ── Key Acknowledged — navigate to project dashboard ─────────────────────
 
 feature.callbackQuery(
   new RegExp(`^${CB_KEY_ACKNOWLEDGED_PREFIX.replace(':', '\\:')}`),
@@ -277,16 +281,11 @@ feature.callbackQuery(
     // Delete the key message (the callback came from the sensitive message)
     await ctx.deleteMessage().catch(() => {})
 
-    const [projectCount, agg] = await Promise.all([
-      projectRepo.countByUserId(ctx.session.user.id),
-      featureRepo.getAggregateStatsByUserId(ctx.session.user.id),
-    ])
-    const stats = { projectCount, ...agg, firstName: ctx.from?.first_name ?? 'Monarch' }
+    const projectId = ctx.callbackQuery.data.slice(CB_KEY_ACKNOWLEDGED_PREFIX.length)
+    if (!projectId)
+      return
 
-    await ctx.sendNavigationMessage(buildHomeText(stats), {
-      videoAssetKey: 'video:introduction',
-      reply_markup: buildHomeKeyboard(ctx.config, projectCount),
-    })
+    await renderDashboard(ctx, projectId)
   },
 )
 

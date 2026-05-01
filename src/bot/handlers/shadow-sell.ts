@@ -18,14 +18,29 @@ feature.callbackQuery(CB_SHADOW_SELL, logHandle('cb-shadow-sell'), async (ctx) =
   ctx.session.inputState = undefined
 
   const userId = ctx.session.user?.id
-  const [projectCount, agg] = userId
-    ? await Promise.all([
-        projectRepo.countByUserId(userId),
-        featureRepo.getAggregateStatsByUserId(userId),
-      ])
-    : [0, { totalSells: 0, totalSolEarned: '0' }]
+  if (!userId) {
+    await ctx.sendNavigationMessage(
+      buildShadowSellHubText({ totalSells: 0, totalSolEarned: '0', statusCounts: {} }),
+      { videoAssetKey: 'video:shadow-sell', reply_markup: buildShadowSellHubKeyboard() },
+    )
+    return
+  }
 
-  await ctx.sendNavigationMessage(buildShadowSellHubText({ projectCount, ...agg }), {
+  const [userProjects, agg] = await Promise.all([
+    projectRepo.findAllByUserId(userId),
+    featureRepo.getAggregateStatsByUserId(userId),
+  ])
+
+  const statusCounts: Record<string, number> = {}
+  await Promise.all(
+    userProjects.map(async (p) => {
+      const pf = await featureRepo.findByProjectId(p.id)
+      const status = pf?.status ?? 'idle'
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1
+    }),
+  )
+
+  await ctx.sendNavigationMessage(buildShadowSellHubText({ ...agg, statusCounts }), {
     videoAssetKey: 'video:shadow-sell',
     reply_markup: buildShadowSellHubKeyboard(),
   })

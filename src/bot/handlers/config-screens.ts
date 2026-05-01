@@ -20,6 +20,7 @@ import {
   buildConfigMinBuyText,
   buildConfigMinSellText,
   buildConfigSavedText,
+  formatMcap,
 } from '#root/bot/helpers/message-builder.js'
 import {
   buildMaxSellKeyboard,
@@ -66,6 +67,7 @@ async function handlePreset(
   fieldLabel: string,
   inputType: 'config_min_sell' | 'config_max_sell' | 'config_min_mcap' | 'config_min_buy',
   validate: (v: number, cfg: ShadowSellConfig) => string | null,
+  formatDisplay?: (v: number) => string,
 ): Promise<void> {
   const data = ctx.callbackQuery?.data
   if (!data || !ctx.session.user)
@@ -82,6 +84,7 @@ async function handlePreset(
     if (!pf)
       return
     ctx.session.inputState = { type: inputType, projectId }
+    await ctx.sendTransientMessage('📝 Type your custom value below:', 30_000)
     return
   }
 
@@ -109,7 +112,8 @@ async function handlePreset(
     eventData: { featureId: pf.id, field, oldValue: config[field], newValue: numValue },
   })
 
-  await ctx.sendTransientMessage(buildConfigSavedText(fieldLabel, String(numValue)), 5_000)
+  const displayValue = formatDisplay ? formatDisplay(numValue) : String(numValue)
+  await ctx.sendTransientMessage(buildConfigSavedText(fieldLabel, displayValue), 5_000)
   await renderDashboard(ctx, projectId)
 }
 
@@ -228,7 +232,7 @@ feat.callbackQuery(
       if (v < 0)
         return 'Must be ≥ 0.'
       return null
-    })
+    }, v => v === 0 ? '$0' : `$${formatMcap(v)}`)
   },
 )
 

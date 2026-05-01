@@ -10,6 +10,7 @@ import {
   buildTokenNotFoundText,
   buildWalletImportedText,
   buildWalletImportErrorText,
+  formatMcap,
 } from '#root/bot/helpers/message-builder.js'
 import { buildHomeKeyboard } from '#root/bot/keyboards/home.keyboard.js'
 import { buildNewProjectCaInputKeyboard, buildTokenFoundKeyboard } from '#root/bot/keyboards/new-project.keyboard.js'
@@ -148,7 +149,7 @@ async function handleWalletImport(ctx: Context, text: string): Promise<void> {
 
     await ctx.sendNavigationMessage(
       buildWalletImportErrorText(reason),
-      { reply_markup: buildHomeKeyboard(ctx.config, 0) },
+      { reply_markup: buildHomeKeyboard(ctx.config) },
     )
 
     // Keep inputState so user can retry (unless it was a duplicate)
@@ -218,7 +219,7 @@ async function handleConfigInput(
   if (!ctx.session.user || !inputState.projectId)
     return
 
-  const value = Number(text)
+  const value = Number(text.replace(/,/g, '').trim())
   if (Number.isNaN(value)) {
     await ctx.sendTransientMessage('❌ Please enter a valid number.', 5_000)
     return
@@ -276,7 +277,10 @@ async function handleConfigInput(
   await projectService.updateConfig(ctx.session.user.id, feature.id, newConfig)
 
   ctx.session.inputState = undefined
-  await ctx.sendTransientMessage(buildConfigSavedText(label, String(value)), 5_000)
+  const displayValue = inputState.type === 'config_min_mcap'
+    ? (value === 0 ? '$0' : `$${formatMcap(value)}`)
+    : String(value)
+  await ctx.sendTransientMessage(buildConfigSavedText(label, displayValue), 5_000)
   await renderDashboard(ctx, inputState.projectId)
 }
 

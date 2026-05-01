@@ -80,27 +80,36 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
     }
   }
 
-  // 5. Render screen
+  // 5. Render screen — gated on whether the user has actually onboarded
+  // (≥1 project), not on whether this is their first /start. A returning
+  // user who never created a project still gets the welcome card so HOME
+  // is never shown with all-zero stats.
   let msg
-  if (ctx.isNewUser) {
+  const userId = ctx.session.user?.id
+  const firstName = ctx.from.first_name ?? 'Monarch'
+
+  // Brand-new users always have 0 projects — skip the DB hit
+  const projectCount = ctx.isNewUser
+    ? 0
+    : userId ? await projectRepo.countByUserId(userId) : 0
+
+  if (projectCount === 0) {
     msg = await sendAnimation(ctx, 'video:introduction', {
-      caption: buildWelcomeText(),
-      reply_markup: buildHomeKeyboard(ctx.config, 0),
+      caption: buildWelcomeText({
+        isReturning: !ctx.isNewUser,
+        firstName,
+      }),
+      reply_markup: buildHomeKeyboard(ctx.config),
     })
   }
   else {
-    const userId = ctx.session.user?.id
-    const firstName = ctx.from.first_name ?? 'Monarch'
-    const [projectCount, agg] = userId
-      ? await Promise.all([
-          projectRepo.countByUserId(userId),
-          featureRepo.getAggregateStatsByUserId(userId),
-        ])
-      : [0, { totalSells: 0, totalSolEarned: '0' }]
+    const agg = userId
+      ? await featureRepo.getAggregateStatsByUserId(userId)
+      : { totalSells: 0, totalSolEarned: '0' }
     const stats = { projectCount, ...agg, firstName }
     msg = await sendAnimation(ctx, 'video:introduction', {
       caption: buildHomeText(stats),
-      reply_markup: buildHomeKeyboard(ctx.config, projectCount),
+      reply_markup: buildHomeKeyboard(ctx.config),
     })
   }
 

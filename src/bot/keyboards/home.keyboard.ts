@@ -9,16 +9,11 @@ import { InlineKeyboard } from 'grammy'
 
 export function buildHomeKeyboard(
   config: Config,
-  projectCount: number,
 ): InlineKeyboard {
-  const shadowSellLabel = projectCount > 0
-    ? `🌑 Shadow Sell  ·  ${projectCount} active`
-    : '🌑 Shadow Sell'
-
   return new InlineKeyboard()
     .text('─────  ⚔️ FEATURES  ─────', CB_NOOP)
     .row()
-    .text(shadowSellLabel, CB_SHADOW_SELL)
+    .text('🌑 Shadow Sell', CB_SHADOW_SELL)
     .row()
     .text('─────  💼 ACCOUNT  ─────', CB_NOOP)
     .row()
