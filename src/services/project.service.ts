@@ -5,6 +5,7 @@ import { AuditLogRepository } from '#root/db/repositories/audit-log.repository.j
 import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.repository.js'
 import { ProjectRepository } from '#root/db/repositories/project.repository.js'
 import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
+import { WhitelistRepository } from '#root/db/repositories/whitelist.repository.js'
 import { logger } from '#root/logger.js'
 import { dexscreenerService } from '#root/services/dexscreener.service.js'
 import { BeruError } from '#root/utils/errors.js'
@@ -50,6 +51,7 @@ export class ProjectService {
   private readonly featureRepo = new ProjectFeatureRepository()
   private readonly walletRepo = new WalletRepository()
   private readonly auditRepo = new AuditLogRepository()
+  private readonly whitelistRepo = new WhitelistRepository()
 
   // ── Create ──────────────────────────────────────────────────────────────────
 
@@ -116,6 +118,13 @@ export class ProjectService {
       lastMarketCapUsd: tokenInfo?.marketCapUsd?.toString() ?? null,
     })
 
+    // Auto-whitelist the project's own wallet so the user's own buys
+    // (top-ups, test buys) don't trigger a Shadow Sell against themselves.
+    const defaultWhitelistEntry = await this.whitelistRepo.create(
+      feature.id,
+      wallet.publicKey,
+    )
+
     await this.auditRepo.create({
       userId,
       eventType: 'project.create',
@@ -125,6 +134,7 @@ export class ProjectService {
         tokenName,
         tokenSymbol,
         walletId,
+        defaultWhitelistEntryId: defaultWhitelistEntry.id,
       },
     })
 
