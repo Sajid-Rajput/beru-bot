@@ -6,7 +6,11 @@ const composer = new Composer<Context>()
 
 const feature = composer.chatType('private')
 
-feature.on('message', logHandle('unhandled-message'), (ctx) => {
+// Only react to actual user-originated messages. Telegram emits service
+// messages (pinned_message, new_chat_members, etc.) as plain `message`
+// updates too — filtering on `:text` + explicit non-service types avoids
+// replying "Unrecognized command" to our own pin action.
+feature.on('message:text', logHandle('unhandled-message'), (ctx) => {
   return ctx.reply(ctx.t('unhandled'))
 })
 

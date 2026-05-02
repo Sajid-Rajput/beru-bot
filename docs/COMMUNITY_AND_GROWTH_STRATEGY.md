@@ -551,7 +551,7 @@ Use Telegram's built-in poll feature in the announcement channel for high-visibi
 - "Preferred default slippage setting?" → 0.5% / 1% / 2% / Custom
 - "When do you trade most?" → Morning / Afternoon / Evening / 24-7
 
-**Rules:** 
+**Rules:**
 - Maximum 1 poll per week in the announcement channel
 - Share poll results in the community group for discussion
 - Actually act on the results — nothing kills engagement faster than ignored polls
@@ -571,7 +571,7 @@ Host live Q&A sessions in the community group:
 **First AMA topic examples:**
 - "Why I'm building Beru Bot"
 - "How Shadow Sell's MEV protection actually works"
-- "The tech stack behind Beru Bot" 
+- "The tech stack behind Beru Bot"
 - "Roadmap preview — what's coming after MVP"
 
 #### 5.2.3 Community Challenges
@@ -750,7 +750,7 @@ Just built [feature name] for @BeruMonarchBot 🔥
 
 What it does:
 • [Benefit 1]
-• [Benefit 2]  
+• [Benefit 2]
 • [Benefit 3]
 
 Here's what it looks like ↓
@@ -1087,24 +1087,24 @@ CREATE TRIGGER set_waitlist_updated_at
 **Drizzle ORM schema (TypeScript):**
 
 ```typescript
-import { pgTable, uuid, bigint, text, integer, timestamp } from 'drizzle-orm/pg-core';
+import { bigint, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const waitlistEntries = pgTable('waitlist_entries', {
-  id:            uuid('id').primaryKey().defaultRandom(),
-  telegramId:    bigint('telegram_id', { mode: 'number' }).notNull().unique(),
-  username:      text('username'),
-  firstName:     text('first_name'),
-  position:      integer('position').notNull(),
-  referredBy:    bigint('referred_by', { mode: 'number' }).references(() => waitlistEntries.telegramId),
+  id: uuid('id').primaryKey().defaultRandom(),
+  telegramId: bigint('telegram_id', { mode: 'number' }).notNull().unique(),
+  username: text('username'),
+  firstName: text('first_name'),
+  position: integer('position').notNull(),
+  referredBy: bigint('referred_by', { mode: 'number' }).references(() => waitlistEntries.telegramId),
   referralCount: integer('referral_count').notNull().default(0),
-  source:        text('source').notNull().default('organic'),
-  status:        text('status').notNull().default('waiting'),
-  joinedAt:      timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
-  notifiedAt:    timestamp('notified_at', { withTimezone: true }),
-  activatedAt:   timestamp('activated_at', { withTimezone: true }),
-  createdAt:     timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt:     timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+  source: text('source').notNull().default('organic'),
+  status: text('status').notNull().default('waiting'),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
+  activatedAt: timestamp('activated_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
 ```
 
 ### 7.5 Position Calculation Logic
@@ -1112,7 +1112,7 @@ export const waitlistEntries = pgTable('waitlist_entries', {
 ```typescript
 /**
  * Join the waitlist and calculate position.
- * 
+ *
  * New users always start at the END of the queue.
  * Position improves by 1 for each successful referral.
  * Position can never go below 1.
@@ -1123,27 +1123,26 @@ async function joinWaitlist(
   firstName: string | null,
   source: string,
   referredByTelegramId?: number
-): Promise<{ position: number; referralLink: string }> {
-  
+): Promise<{ position: number, referralLink: string }> {
   return await db.transaction(async (tx) => {
     // Check if already on waitlist
     const existing = await tx.query.waitlistEntries.findFirst({
       where: eq(waitlistEntries.telegramId, telegramId),
-    });
-    
+    })
+
     if (existing) {
       return {
         position: existing.position,
         referralLink: `https://t.me/BeruMonarchBot?start=wl_${telegramId}`,
-      };
+      }
     }
-    
+
     // Get current max position
     const maxResult = await tx
       .select({ max: sql<number>`COALESCE(MAX(position), 0)` })
-      .from(waitlistEntries);
-    const newPosition = maxResult[0].max + 1;
-    
+      .from(waitlistEntries)
+    const newPosition = maxResult[0].max + 1
+
     // Insert new entry
     await tx.insert(waitlistEntries).values({
       telegramId,
@@ -1152,8 +1151,8 @@ async function joinWaitlist(
       position: newPosition,
       referredBy: referredByTelegramId ?? null,
       source,
-    });
-    
+    })
+
     // Credit referrer
     if (referredByTelegramId) {
       await tx
@@ -1163,14 +1162,14 @@ async function joinWaitlist(
           position: sql`GREATEST(position - 1, 1)`,
           updatedAt: new Date(),
         })
-        .where(eq(waitlistEntries.telegramId, referredByTelegramId));
+        .where(eq(waitlistEntries.telegramId, referredByTelegramId))
     }
-    
+
     return {
       position: newPosition,
       referralLink: `https://t.me/BeruMonarchBot?start=wl_${telegramId}`,
-    };
-  });
+    }
+  })
 }
 ```
 
@@ -1181,7 +1180,7 @@ When MVP is ready to launch, notify all waitlist members using BullMQ (already i
 ```typescript
 /**
  * Batch-notify all waitlist members.
- * 
+ *
  * Uses BullMQ notification-queue to avoid Telegram rate limits.
  * Telegram allows ~30 messages/second to different users.
  * Batch size: 25 per second with 1-second delay between batches.
@@ -1190,15 +1189,15 @@ async function notifyWaitlistMembers(): Promise<void> {
   const waitingMembers = await db.query.waitlistEntries.findMany({
     where: eq(waitlistEntries.status, 'waiting'),
     orderBy: asc(waitlistEntries.position),
-  });
-  
-  const BATCH_SIZE = 25;
-  
+  })
+
+  const BATCH_SIZE = 25
+
   for (let i = 0; i < waitingMembers.length; i += BATCH_SIZE) {
-    const batch = waitingMembers.slice(i, i + BATCH_SIZE);
-    
+    const batch = waitingMembers.slice(i, i + BATCH_SIZE)
+
     // Add each notification as a job in the notification queue
-    const jobs = batch.map((member) => ({
+    const jobs = batch.map(member => ({
       name: 'waitlist-launch-notify',
       data: {
         telegramId: member.telegramId,
@@ -1209,16 +1208,16 @@ async function notifyWaitlistMembers(): Promise<void> {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
       },
-    }));
-    
-    await notificationQueue.addBulk(jobs);
+    }))
+
+    await notificationQueue.addBulk(jobs)
   }
-  
+
   // Mark all as notified
   await db
     .update(waitlistEntries)
     .set({ status: 'notified', notifiedAt: new Date(), updatedAt: new Date() })
-    .where(eq(waitlistEntries.status, 'waiting'));
+    .where(eq(waitlistEntries.status, 'waiting'))
 }
 ```
 
@@ -1263,26 +1262,26 @@ Add a waitlist counter widget to berubot.com:
 
 export async function GET(req: Request) {
   // Check Redis cache first
-  const cached = await redis.get('waitlist:count');
+  const cached = await redis.get('waitlist:count')
   if (cached) {
-    return Response.json(JSON.parse(cached));
+    return Response.json(JSON.parse(cached))
   }
-  
+
   // Query database
   const result = await db
     .select({ count: sql<number>`COUNT(*)` })
     .from(waitlistEntries)
-    .where(eq(waitlistEntries.status, 'waiting'));
-  
+    .where(eq(waitlistEntries.status, 'waiting'))
+
   const response = {
     count: result[0].count,
     lastUpdated: new Date().toISOString(),
-  };
-  
+  }
+
   // Cache for 5 minutes
-  await redis.set('waitlist:count', JSON.stringify(response), 'EX', 300);
-  
-  return Response.json(response);
+  await redis.set('waitlist:count', JSON.stringify(response), 'EX', 300)
+
+  return Response.json(response)
 }
 ```
 

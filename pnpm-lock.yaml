@@ -29,6 +29,9 @@ importers:
       '@grammyjs/runner':
         specifier: 2.0.3
         version: 2.0.3(grammy@1.35.0)
+      '@grammyjs/storage-redis':
+        specifier: ^2.5.1
+        version: 2.5.1
       '@grammyjs/types':
         specifier: 3.19.0
         version: 3.19.0
@@ -799,6 +802,9 @@ packages:
     engines: {node: '>=12.20.0 || >=14.13.1'}
     peerDependencies:
       grammy: ^1.13.1
+
+  '@grammyjs/storage-redis@2.5.1':
+    resolution: {integrity: sha512-Rz7bnrtDz8NOjgSRR4n/rBciHKSvmkrgIUc+8Yb96tSsecBlA91MGOmcgmQXKxb7gTmwliF37VgmMT85bsCZtA==}
 
   '@grammyjs/types@3.19.0':
     resolution: {integrity: sha512-N0MS+RJG+AGSNuka1GWVj88oyK1oti4I0eQq6jGo4hic3P9MwFfnHjGQuIExZ3tlJUrZYwC/T7gk4Tu3+guJyg==}
@@ -3784,6 +3790,8 @@ snapshots:
     dependencies:
       abort-controller: 3.0.0
       grammy: 1.35.0
+
+  '@grammyjs/storage-redis@2.5.1': {}
 
   '@grammyjs/types@3.19.0': {}
 

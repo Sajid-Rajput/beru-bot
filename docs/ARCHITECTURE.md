@@ -285,7 +285,7 @@ External Dependencies (outbound only):
 
 ```yaml
 # docker-compose.yml
-version: "3.9"
+version: '3.9'
 
 services:
   postgres:
@@ -300,7 +300,7 @@ services:
     networks:
       - beru_internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: [CMD-SHELL, 'pg_isready -U ${DB_USER}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -323,7 +323,7 @@ services:
     networks:
       - beru_internal
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [CMD, redis-cli, ping]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -348,7 +348,7 @@ services:
       - beru_internal
       - beru_external
     ports:
-      - "3000:3000"   # Hono server (behind Caddy)
+      - '3000:3000' # Hono server (behind Caddy)
     deploy:
       resources:
         limits:
@@ -377,8 +377,8 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -396,7 +396,7 @@ volumes:
 
 networks:
   beru_internal:
-    internal: true      # no external access
+    internal: true # no external access
   beru_external:
     driver: bridge
 ```
@@ -540,55 +540,56 @@ With envelope encryption:
 ```typescript
 // Pseudo-code — CryptoService
 
-import { createCipheriv, createDecipheriv, randomBytes, pbkdf2Sync } from 'crypto';
+import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'node:crypto'
 
-const ALGORITHM = 'aes-256-gcm';
-const PBKDF2_ITERATIONS = 600_000;
-const KEY_LENGTH = 32; // 256 bits
-const IV_LENGTH = 16;
-const SALT_LENGTH = 32;
+const ALGORITHM = 'aes-256-gcm'
+const PBKDF2_ITERATIONS = 600_000
+const KEY_LENGTH = 32 // 256 bits
+const IV_LENGTH = 16
+const SALT_LENGTH = 32
 
 class CryptoService {
-  private masterSecret: Buffer;
+  private masterSecret: Buffer
 
   constructor(masterKeyHex: string) {
-    this.masterSecret = Buffer.from(masterKeyHex, 'hex');
-    if (this.masterSecret.length !== 32) throw new Error('MASTER_KEY_SECRET must be 64 hex chars (32 bytes)');
+    this.masterSecret = Buffer.from(masterKeyHex, 'hex')
+    if (this.masterSecret.length !== 32)
+      throw new Error('MASTER_KEY_SECRET must be 64 hex chars (32 bytes)')
   }
 
   // Derive MEK from master secret + per-wallet salt
   private deriveMEK(salt: Buffer): Buffer {
-    return pbkdf2Sync(this.masterSecret, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha512');
+    return pbkdf2Sync(this.masterSecret, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha512')
   }
 
   // Encrypt a wallet private key (full envelope)
   encryptPrivateKey(privateKeyBase58: string): WalletEncryptionPayload {
     // Layer 1: Generate random DEK
-    const dek = randomBytes(KEY_LENGTH);
-    const dekSalt = randomBytes(SALT_LENGTH);
+    const dek = randomBytes(KEY_LENGTH)
+    const dekSalt = randomBytes(SALT_LENGTH)
 
     // Layer 2: Encrypt private key with DEK
-    const pkIv = randomBytes(IV_LENGTH);
-    const pkCipher = createCipheriv(ALGORITHM, dek, pkIv);
+    const pkIv = randomBytes(IV_LENGTH)
+    const pkCipher = createCipheriv(ALGORITHM, dek, pkIv)
     const pkEncrypted = Buffer.concat([
       pkCipher.update(privateKeyBase58, 'utf8'),
       pkCipher.final(),
-    ]);
-    const pkAuthTag = pkCipher.getAuthTag();
+    ])
+    const pkAuthTag = pkCipher.getAuthTag()
 
     // Layer 1: Encrypt DEK with MEK
-    const mek = this.deriveMEK(dekSalt);
-    const dekIv = randomBytes(IV_LENGTH);
-    const dekCipher = createCipheriv(ALGORITHM, mek, dekIv);
+    const mek = this.deriveMEK(dekSalt)
+    const dekIv = randomBytes(IV_LENGTH)
+    const dekCipher = createCipheriv(ALGORITHM, mek, dekIv)
     const dekEncrypted = Buffer.concat([
       dekCipher.update(dek),
       dekCipher.final(),
-    ]);
-    const dekAuthTag = dekCipher.getAuthTag();
+    ])
+    const dekAuthTag = dekCipher.getAuthTag()
 
     // Zero plaintext DEK from memory
-    dek.fill(0);
-    mek.fill(0);
+    dek.fill(0)
+    mek.fill(0)
 
     return {
       encrypted_private_key: pkEncrypted.toString('base64'),
@@ -598,40 +599,40 @@ class CryptoService {
       dek_iv: dekIv.toString('base64'),
       dek_auth_tag: dekAuthTag.toString('base64'),
       dek_salt: dekSalt.toString('base64'),
-    };
+    }
   }
 
   // Decrypt a wallet private key (reverse envelope)
   decryptPrivateKey(payload: WalletEncryptionPayload): string {
     // Layer 1: Derive MEK and decrypt DEK
-    const dekSalt = Buffer.from(payload.dek_salt, 'base64');
-    const mek = this.deriveMEK(dekSalt);
+    const dekSalt = Buffer.from(payload.dek_salt, 'base64')
+    const mek = this.deriveMEK(dekSalt)
     const dekDecipher = createDecipheriv(
       ALGORITHM,
       mek,
       Buffer.from(payload.dek_iv, 'base64'),
-    );
-    dekDecipher.setAuthTag(Buffer.from(payload.dek_auth_tag, 'base64'));
+    )
+    dekDecipher.setAuthTag(Buffer.from(payload.dek_auth_tag, 'base64'))
     const dek = Buffer.concat([
       dekDecipher.update(Buffer.from(payload.dek_encrypted, 'base64')),
       dekDecipher.final(),
-    ]);
-    mek.fill(0); // Zero MEK
+    ])
+    mek.fill(0) // Zero MEK
 
     // Layer 2: Decrypt private key with DEK
     const pkDecipher = createDecipheriv(
       ALGORITHM,
       dek,
       Buffer.from(payload.pk_iv, 'base64'),
-    );
-    pkDecipher.setAuthTag(Buffer.from(payload.pk_auth_tag, 'base64'));
+    )
+    pkDecipher.setAuthTag(Buffer.from(payload.pk_auth_tag, 'base64'))
     const privateKey = Buffer.concat([
       pkDecipher.update(Buffer.from(payload.encrypted_private_key, 'base64')),
       pkDecipher.final(),
-    ]).toString('utf8');
-    dek.fill(0); // Zero DEK
+    ]).toString('utf8')
+    dek.fill(0) // Zero DEK
 
-    return privateKey;
+    return privateKey
   }
 }
 ```
@@ -665,7 +666,7 @@ Grammy.js handles this via the `secretToken` option:
 // Bot setup (in app container)
 bot.api.setWebhook(`https://${DOMAIN}/telegram`, {
   secret_token: BOT_WEBHOOK_SECRET,
-});
+})
 
 // Hono route verifies the X-Telegram-Bot-Api-Secret-Token header automatically
 // Grammy's webhookCallback middleware handles this
@@ -895,8 +896,8 @@ erDiagram
 ```typescript
 // src/db/schema/project-features.ts (illustrative)
 
-import { pgTable, uuid, pgEnum, jsonb, boolean, decimal, timestamp, integer } from 'drizzle-orm/pg-core';
-import { projects } from './projects';
+import { boolean, decimal, integer, jsonb, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { projects } from './projects'
 
 export const featureTypeEnum = pgEnum('feature_type', [
   'shadow_sell',
@@ -904,7 +905,7 @@ export const featureTypeEnum = pgEnum('feature_type', [
   'phantom_swap',
   'legion_volume',
   'eternal_dca',
-]);
+])
 
 export const featureStatusEnum = pgEnum('feature_status', [
   'idle',
@@ -914,7 +915,7 @@ export const featureStatusEnum = pgEnum('feature_status', [
   'completed',
   'stopped',
   'error',
-]);
+])
 
 export const projectFeatures = pgTable('project_features', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -938,18 +939,18 @@ export const projectFeatures = pgTable('project_features', {
   stoppedAt: timestamp('stopped_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+})
 ```
 
 ### 5.4 Shadow Sell Config (JSONB Shape)
 
 ```typescript
 interface ShadowSellConfig {
-  minSellPercentage: number;      // e.g., 5 (%)
-  maxSellPercentage: number;      // e.g., 20 (%)
-  targetMarketCapUsd: number;     // e.g., 0 (0 = no threshold)
-  minBuyAmountSol: number;        // e.g., 0.1
-  hysteresisPercentage: number;   // e.g., 10 (% below target to pause)
+  minSellPercentage: number // e.g., 5 (%)
+  maxSellPercentage: number // e.g., 20 (%)
+  targetMarketCapUsd: number // e.g., 0 (0 = no threshold)
+  minBuyAmountSol: number // e.g., 0.1
+  hysteresisPercentage: number // e.g., 10 (% below target to pause)
 }
 ```
 
@@ -1159,10 +1160,10 @@ Incoming POST /webhook/qn
 **Configuration**:
 ```typescript
 new Worker('sell-queue', processor, {
-  concurrency: 5,                    // 5 parallel sells
+  concurrency: 5, // 5 parallel sells
   limiter: { max: 10, duration: 60_000 }, // max 10 per minute (safety)
   connection: redisConnection,
-});
+})
 ```
 
 **Per-job logic**: See Section 7 (Execution Pipeline) for the complete flow.
