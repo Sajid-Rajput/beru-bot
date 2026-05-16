@@ -58,8 +58,6 @@ export const NONCE_TTL = 60
 // ── Polling / intervals in milliseconds (§15.7) ───────────────────────────
 /** DexScreener MCAP poll cycle (ms) */
 export const MCAP_POLL_INTERVAL = 30_000
-/** QuickNode KV store sync cycle (ms) */
-export const QN_KV_SYNC_INTERVAL = 300_000
 /** Recovery worker cycle (ms) */
 export const RECOVERY_INTERVAL = 300_000
 /** Watched-token cache rebuild safety net (ms) */

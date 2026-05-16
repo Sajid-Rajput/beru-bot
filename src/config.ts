@@ -20,18 +20,15 @@ const baseConfigSchema = v.object({
     v.string(),
     v.regex(/^[0-9a-f]{64}$/, 'MASTER_KEY_SECRET must be exactly 64 lowercase hex chars (openssl rand -hex 32)'),
   ),
-  qnWebhookSecret: v.optional(v.string(), ''),
   domain: v.optional(v.string(), 'localhost'),
 
-  // ── Solana ────────────────────────────────────────────────────────────────
-  solanaRpcUrl: v.optional(v.string(), ''),
+  // ── Solana RPC stack ──────────────────────────────────────────────────────
+  solanaPrimaryRpcUrl: v.optional(v.string(), ''),
+  solanaPrimaryWsUrl: v.optional(v.string(), ''),
+  solanaFallbackRpcUrl: v.optional(v.string(), ''),
+  solanaPublicRpcUrl: v.optional(v.string(), 'https://api.mainnet-beta.solana.com'),
   platformFeeWallet: v.optional(v.string(), ''),
   platformFeePercentage: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.01'),
-
-  // ── QuickNode ─────────────────────────────────────────────────────────────
-  qnStreamId: v.optional(v.string(), ''),
-  qnApiKey: v.optional(v.string(), ''),
-  qnKvStoreId: v.optional(v.string(), ''),
 
   // ── Referral ──────────────────────────────────────────────────────────────
   referralTier1Pct: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.35'),

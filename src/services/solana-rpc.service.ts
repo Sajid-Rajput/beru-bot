@@ -15,7 +15,7 @@ const log = createLogger('SolanaRpcService')
 export class SolanaRpcService {
   private readonly connection: Connection
 
-  constructor(endpoint: string = config.solanaRpcUrl || 'https://api.mainnet-beta.solana.com') {
+  constructor(endpoint: string = config.solanaPrimaryRpcUrl || 'https://api.mainnet-beta.solana.com') {
     this.connection = new Connection(endpoint, 'confirmed')
   }
 

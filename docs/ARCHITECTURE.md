@@ -108,8 +108,6 @@
 | G10 | **Whitelist** | Set of Solana addresses (per feature) whose buy TXs are IGNORED — they do NOT trigger a sell. Up to 25 entries. | `whitelist_entries` table | → 5.2 |
 | G11 | **MCAP Target** | Minimum market cap (USD) a token must reach before Shadow Sell activates (`pending` → `watching`). Set to 0 to skip this gate. | `config.targetMarketCapUsd` | → 5.4, 6.5 |
 | G12 | **Hysteresis** | Percentage buffer below MCAP target. Once watching, feature only pauses if MCAP drops to `target × (1 − hysteresis/100)`. Prevents rapid on/off flapping. | `config.hysteresisPercentage` | → 5.4, 6.5 |
-| G13 | **QuickNode Stream** | Real-time Solana transaction feed delivered as signed webhooks. Filters by token mints stored in QuickNode KV. | External service | → 6.3 |
-| G14 | **QuickNode KV** | QuickNode's key-value store maintaining the set of token mints the Stream should filter for. Synced every 5 minutes by MarketCapMonitorWorker. | External service | → 6.5 |
 | G15 | **BullMQ** | Redis-backed persistent job queue. Used for all async work: sells, monitoring, recovery, payouts, notifications. Supports concurrency, retries, cron, repeatable jobs. | npm: `bullmq` | → 6, 15.2 |
 | G16 | **App Container** | Docker container running `src/app.ts`. Hosts Grammy.js bot + Hono webhook server + BullMQ producers + notification consumer. | `docker-compose: app` | → 3.1, 6.2 |
 | G17 | **Worker Container** | Docker container running `src/worker.ts`. Hosts BullMQ consumers: SellExecutionWorker, MarketCapMonitorWorker, RecoveryWorker, FeePayoutWorker. | `docker-compose: worker` | → 3.1, 6.4–6.7 |
@@ -637,28 +635,7 @@ class CryptoService {
 }
 ```
 
-### 4.4 Webhook Security — QuickNode Streams
-
-```
-Incoming webhook request:
-  POST /webhook/qn
-  Headers:
-    x-qn-signature: <HMAC-SHA256 hex digest>
-    x-qn-timestamp: <unix timestamp>
-    x-qn-nonce: <unique nonce>
-  Body: [...transactions]
-
-Verification flow:
-  1. Extract timestamp → reject if |now - timestamp| > 30 seconds (replay protection)
-  2. Construct signing string: timestamp + "." + nonce + "." + rawBody
-  3. Compute HMAC-SHA256(signing_string, QN_WEBHOOK_SECRET)
-  4. Constant-time compare against x-qn-signature header
-  5. Check nonce not seen before (Redis SET NX EX 60)
-  6. If all pass → process payload
-  7. If any fail → 401 Unauthorized, log attempt to audit_log
-```
-
-### 4.5 Telegram Webhook Security
+### 4.4 Telegram Webhook Security
 
 Grammy.js handles this via the `secretToken` option:
 
@@ -672,7 +649,7 @@ bot.api.setWebhook(`https://${DOMAIN}/telegram`, {
 // Grammy's webhookCallback middleware handles this
 ```
 
-### 4.6 Private Key Display Security
+### 4.5 Private Key Display Security
 
 When a wallet is generated and the private key must be shown to the user:
 
@@ -682,7 +659,7 @@ When a wallet is generated and the private key must be shown to the user:
 4. The message explicitly states: "This key is shown ONLY ONCE"
 5. User's input message containing a private key (for import) is **immediately deleted** by the bot
 
-### 4.7 Application-Level Security
+### 4.6 Application-Level Security
 
 | Control | Implementation |
 |---------|---------------|
@@ -696,7 +673,7 @@ When a wallet is generated and the private key must be shown to the user:
 | Docker isolation | Non-root user in containers. Read-only filesystem where possible. |
 | Audit logging | Every wallet decryption, sell execution, fee collection, config change, and error logged to `audit_log` table |
 
-### 4.8 Audit Log Events
+### 4.7 Audit Log Events
 
 | Event Type | Logged Data | Trigger |
 |------------|------------|---------|
