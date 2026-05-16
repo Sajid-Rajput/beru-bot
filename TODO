@@ -11,6 +11,24 @@ Sprint Overview:
   Template: bot-base/telegram-bot-template (Docker deploy branch)
   Docs: ARCHITECTURE.md · beru_bot_interface_and_flow.md · COMMUNITY_AND_GROWTH_STRATEGY.md
 
+Status Snapshot (2026-05-16 — codebase review):
+  ✔ Day 1 — Foundation & Infra .............................. DONE
+  ✔ Day 2 — Core Services Layer .............................. DONE
+  ✔ Day 3 — Bot Handlers Part 1 (Onboarding/Projects) ........ DONE  (T3.1–T3.8 all live)
+  ◐ Day 4 — Bot Handlers Part 2 (Dashboard/CRUD) ............. MOSTLY DONE  (T4.1–T4.6 done; T4.7 partial: pre-flight balance + watched-token cache + QN KV sync pending)
+  ◐ Day 5 — Webhook + Sell Pipeline .......................... MOSTLY TODO  (T5.1 bootstrap + telegram webhook done; T5.5 Connection + getTokenBalance done; T5.2/5.3/5.4/5.6 + remaining T5.1/T5.5 = stubs)
+  ☐ Day 6 — Background Workers & Notifications ............... NOT STARTED  (all 5 workers + worker.ts entrypoint are 2-line stubs)
+  ☐ Day 7 — Waitlist + Testing + Polish ...................... NOT STARTED  (waitlist handler/route stubs; only crypto.service.test.ts exists)
+  ☐ Day 8 — Deployment & Launch Prep ......................... NOT STARTED
+
+  Stub files confirmed empty / placeholder:
+    src/workers/{sell-execution,market-cap-monitor,recovery,fee-payout,notification.consumer}.worker.ts
+    src/worker.ts (entrypoint placeholder)
+    src/services/{jupiter,notification,queue,solana}.service.ts
+    src/server/routes/{health,quicknode,waitlist}.ts
+    src/server/middlewares/hmac-verify.ts
+    src/bot/handlers/{waitlist,community}.ts
+
 Day 1 — March 1 — Foundation & Infrastructure: @critical
   Goal: Docker stack running, all 12 DB tables migrated, project structure ready.
   ✔ T1.1 Clone Base Template: @critical @done(26-03-02 02:46)
@@ -151,9 +169,9 @@ Day 1 — March 1 — Foundation & Infrastructure: @critical
     ✔ Verify: MAX_PROJECTS_PER_USER (3) enforced @done(26-03-11 23:10)
     ✔ Verify: default config = { min_sell: 5, max_sell: 20, min_mcap: 0, min_buy: 0.1 } @done(26-03-11 23:10)
 
-Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
+✔ Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical @done(26-05-16)
   Goal: Start → Setup → Import → New Project → Key Display all working.
-  ☐ T3.1 Bot Initialization & Middleware Stack: @critical
+  ✔ T3.1 Bot Initialization & Middleware Stack: @critical @done(26-03-26 01:34)
     ✔ Create src/bot/index.ts — Grammy.js Bot init with token @done(26-03-26 01:34)
     ✔ Install plugins: hydrate, parse-mode, conversations @done(26-03-26 01:34)
     ✔ Define session type: lastNavMessageId, inputState, user @done(26-03-26 01:34)
@@ -163,7 +181,7 @@ Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
     ✔ Register text message handler (smart detection) @done(26-03-26 01:34)
     ✔ Export createBot() factory function @done(26-03-26 01:34)
     ✔ Verify: bot responds to /start @done(26-03-26 01:34)
-  ☐ T3.2 Start Command & Welcome/Home Screens: @critical
+  ✔ T3.2 Start Command & Welcome/Home Screens: @critical @done(26-03-26 23:08)
     ✔ Implement deep link parsing: ref_{id}, wl_{id}, website, community, organic @done(26-03-26 23:08)
     ✔ Implement SCR_WELCOME (first-time users): video + message + inline keyboard @done(26-03-26 23:08)
     ✔ Implement SCR_HOME (returning users): stats + same keyboard @done(26-03-26 23:08)
@@ -171,118 +189,118 @@ Day 3 — March 3 — Bot Handlers Part 1 (Onboarding & Projects): @critical
     ✔ Build home.keyboard.ts: Quick Setup | My Projects + New Project | Wallets | Referrals + Support @done(26-03-26 23:08)
     ✔ Store lastNavMessageId in session @done(26-03-26 23:08)
     ✔ Delete prior navigation message on new send @done(26-03-26 23:08)
-  ☐ T3.3 Message Management Middleware: @critical
-    ☐ Implement delete-previous-nav behavior (delete old → send new → store ID)
-    ☐ Implement sendNavigationMessage() helper
-    ☐ Implement sendTransientMessage(ctx, text, deleteAfterMs) with setTimeout
-    ☐ Implement sendSensitiveMessage(ctx, text, kb, deleteAfterMs) with spoiler
-    ☐ Implement sendPinnedStatusMessage(ctx, text) + updatePinnedStatusMessage()
-    ☐ Implement immediate deletion of user-pasted private keys (invariant 7)
-  ☐ T3.4 Rate Limit & Debounce Middlewares: @high
-    ☐ Implement rate-limit.ts: Redis INCR on rate:{telegramId}, reject >30/min
-    ☐ Implement debounce.ts: Redis SET NX on debounce:{telegramId}:{cb}, TTL 1s
-    ☐ Verify: rapid button clicks are swallowed after first
-    ☐ Verify: rate limit triggers warning message
-  ☐ T3.5 Quick Setup & Wallet Import Flow: @critical
-    ☐ Implement SCR_QUICK_SETUP screen + inputState = import_wallet
-    ☐ Implement private key input: IMMEDIATELY delete user's message
-    ☐ Validate with Valibot schema
-    ☐ Call WalletService.importWallet() on valid key
-    ☐ Handle already-exists error
-    ☐ Implement SCR_WALLET_IMPORTED with public key display
-    ☐ Clear session.inputState after completion
-  ☐ T3.6 Smart CA Detection Middleware: @critical
-    ☐ Implement priority-ordered text handler: command → CA → input state → fallback
-    ☐ CA regex: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/
-    ☐ Delete user's CA message immediately
-    ☐ Existing project with mint → navigate to dashboard
-    ☐ New CA → enter new project flow
-    ☐ Input state routing (config values, private keys, etc.)
-    ☐ Fallback: silently ignore
-  ☐ T3.7 New Project Flow (CA → Token Found → Confirm): @critical
-    ☐ Implement SCR_NEW_PROJECT_CA_INPUT + project count check (max 3)
-    ☐ Call DexScreenerService.fetchTokenInfo(mint)
-    ☐ Implement SCR_TOKEN_FOUND with token info display
-    ☐ Implement SCR_TOKEN_NOT_FOUND with retry option
-    ☐ Implement confirm: ProjectService.createProject()
-    ☐ Generate project wallet + encrypt
-    ☐ Navigate to key display screen
-  ☐ T3.8 Project Key Display Screen: @critical
-    ☐ Decrypt project wallet key (one-time display)
-    ☐ Send with Telegram spoiler: ||{privateKey}||
-    ☐ Include public key in plain text + warning
-    ☐ Schedule auto-delete after 24h (KEY_DISPLAY_DELETE_AFTER)
-    ☐ Log audit event: wallet.decrypt
-    ☐ Implement cb_key_acknowledged: delete key msg → show dashboard
+  ✔ T3.3 Message Management Middleware: @critical @done(26-05-16)
+    ✔ Implement delete-previous-nav behavior (delete old → send new → store ID) @done(26-05-16)
+    ✔ Implement sendNavigationMessage() helper @done(26-05-16)
+    ✔ Implement sendTransientMessage(ctx, text, deleteAfterMs) with setTimeout @done(26-05-16)
+    ✔ Implement sendSensitiveMessage(ctx, text, kb, deleteAfterMs) with spoiler @done(26-05-16)
+    ✔ Implement sendPinnedStatusMessage(ctx, text) + updatePinnedStatusMessage() @done(26-05-16)
+    ✔ Implement immediate deletion of user-pasted private keys (invariant 7) @done(26-05-16)
+  ✔ T3.4 Rate Limit & Debounce Middlewares: @high @done(26-05-16)
+    ✔ Implement rate-limit.ts: Redis INCR on rate:{telegramId}, reject >30/min @done(26-05-16)
+    ✔ Implement debounce.ts: Redis SET NX on debounce:{telegramId}:{cb}, TTL 1s @done(26-05-16)
+    ✔ Verify: rapid button clicks are swallowed after first @done(26-05-16)
+    ✔ Verify: rate limit triggers warning message @done(26-05-16)
+  ✔ T3.5 Quick Setup & Wallet Import Flow: @critical @done(26-05-16)
+    ✔ Implement SCR_QUICK_SETUP screen + inputState = import_wallet @done(26-05-16)
+    ✔ Implement private key input: IMMEDIATELY delete user's message @done(26-05-16)
+    ✔ Validate with Valibot schema @done(26-05-16)
+    ✔ Call WalletService.importWallet() on valid key @done(26-05-16)
+    ✔ Handle already-exists error @done(26-05-16)
+    ✔ Implement SCR_WALLET_IMPORTED with public key display @done(26-05-16)
+    ✔ Clear session.inputState after completion @done(26-05-16)
+  ✔ T3.6 Smart CA Detection Middleware: @critical @done(26-05-16)
+    ✔ Implement priority-ordered text handler: command → CA → input state → fallback @done(26-05-16)
+    ✔ CA regex: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/ @done(26-05-16)
+    ✔ Delete user's CA message immediately @done(26-05-16)
+    ✔ Existing project with mint → navigate to dashboard @done(26-05-16)
+    ✔ New CA → enter new project flow @done(26-05-16)
+    ✔ Input state routing (config values, private keys, etc.) @done(26-05-16)
+    ✔ Fallback: silently ignore @done(26-05-16)
+  ✔ T3.7 New Project Flow (CA → Token Found → Confirm): @critical @done(26-05-16)
+    ✔ Implement SCR_NEW_PROJECT_CA_INPUT + project count check (max 3) @done(26-05-16)
+    ✔ Call DexScreenerService.fetchTokenInfo(mint) @done(26-05-16)
+    ✔ Implement SCR_TOKEN_FOUND with token info display @done(26-05-16)
+    ✔ Implement SCR_TOKEN_NOT_FOUND with retry option @done(26-05-16)
+    ✔ Implement confirm: ProjectService.createProject() @done(26-05-16)
+    ✔ Generate project wallet + encrypt @done(26-05-16)
+    ✔ Navigate to key display screen @done(26-05-16)
+  ✔ T3.8 Project Key Display Screen: @critical @done(26-05-16)
+    ✔ Decrypt project wallet key (one-time display) @done(26-05-16)
+    ✔ Send with Telegram spoiler: ||{privateKey}|| @done(26-05-16)
+    ✔ Include public key in plain text + warning @done(26-05-16)
+    ✔ Schedule auto-delete after 24h (KEY_DISPLAY_DELETE_AFTER) @done(26-05-16)
+    ✔ Log audit event: wallet.decrypt @done(26-05-16)
+    ✔ Implement cb_key_acknowledged: delete key msg → show dashboard @done(26-05-16)
 
 Day 4 — March 4 — Bot Handlers Part 2 (Dashboard, Config & CRUD): @critical
   Goal: Complete dashboard, all config screens, whitelist, delete, referrals, wallets.
-  T4.1 Project Dashboard (SCR_DASHBOARD): @critical
-    ☐ Fetch project + feature + stats from DB
-    ☐ Build dashboard message: token info, wallet, status, config, stats
-    ☐ Build state-aware inline keyboard (idle/stopped vs watching/executing)
-    ☐ Config buttons clickable when idle/stopped, disabled when active (invariant 23)
-    ☐ Start/Stop button switches based on status
-    ☐ Implement refresh handler (edit existing message)
-    ☐ Build dashboard.keyboard.ts with all callbacks
-  T4.2 Config Screens (5 Sub-Screens): @critical
-    ☐ Implement Min Sell %: presets [1, 3, 5, 10, 15] + Custom
-    ☐ Implement Max Sell %: presets [10, 15, 20, 30, 50] + Custom
-    ☐ Implement Min MCAP: presets [$0, $10K, $50K, $100K, $500K] + Custom
-    ☐ Implement Min Buy: presets [0.1, 0.5, 1, 2, 5 SOL] + Custom
-    ☐ Implement Custom input mode (set session.inputState, validate, save)
-    ☐ Cross-validate: min_sell ≤ max_sell
-    ☐ Update project_features.config JSONB on save
-    ☐ Log audit event: config.change with old/new values
-    ☐ Return to dashboard after save
-    ☐ Build config.keyboard.ts
-  T4.3 Whitelist CRUD: @critical
-    ☐ Implement SCR_WHITELIST: paginated list (5/page) with remove buttons
-    ☐ Show count: "Whitelist ({count}/25)"
-    ☐ Implement Add Whitelist: validate address + check duplicates + save
-    ☐ Enforce MAX_WHITELIST_ENTRIES = 25 limit
-    ☐ Implement Remove: delete + re-render list
-    ☐ Build whitelist.keyboard.ts with pagination
-  T4.4 My Projects & Wallets Screens: @high
-    ☐ Implement SCR_MY_PROJECTS: list projects with status emojis
-    ☐ Handle empty state: "No projects yet"
-    ☐ Project selection → navigate to dashboard
-    ☐ Implement SCR_WALLETS: list imported wallets with public keys
-    ☐ Show wallet assignment status
-  T4.5 Delete Project Flow: @high
-    ☐ Implement SCR_DELETE_CONFIRM with warning message
-    ☐ Extra warning if feature is active
-    ☐ Confirm: ProjectService.deleteProject() → navigate to My Projects
-    ☐ Cancel: return to dashboard
-    ☐ Verify: soft-delete (deleted_at set, not hard delete)
-  T4.6 Referrals & Payout Wallet: @high
-    ☐ Implement SCR_REFERRALS: link, stats, tier counts, earnings, payout wallet
-    ☐ Implement SCR_SET_PAYOUT_WALLET: input + validate address + save
-    ☐ Display referral link: t.me/BeruMonarchBot?start=ref_{telegramId}
-    ☐ Show total + pending earnings from fee_ledger
-  T4.7 Shadow Sell Activation (Start/Stop): @critical
-    ☐ Start: run pre-flight checks (balance > 0, valid config)
-    ☐ Start: transition idle → pending → watching (FSM §8.1)
-    ☐ Start: set is_watching = true, add to watched-token cache, sync QN KV
-    ☐ Start: create + pin MSG_PINNED_STATUS (initial state)
-    ☐ Start: send state alert "⚡ Shadow Sell is now WATCHING" (transient, 30s)
-    ☐ Start: disable config buttons on dashboard (invariant 23)
-    ☐ Stop: transition watching/executing → stopped
-    ☐ Stop: set is_watching = false, remove from cache, sync QN KV
-    ☐ Stop: update pinned status to "Stopped by user"
-    ☐ Stop: re-enable config buttons on dashboard
+  ✔ T4.1 Project Dashboard (SCR_DASHBOARD): @critical @done(26-05-16)
+    ✔ Fetch project + feature + stats from DB @done(26-05-16)
+    ✔ Build dashboard message: token info, wallet, status, config, stats @done(26-05-16)
+    ✔ Build state-aware inline keyboard (idle/stopped vs watching/executing) @done(26-05-16)
+    ✔ Config buttons clickable when idle/stopped, disabled when active (invariant 23) @done(26-05-16)
+    ✔ Start/Stop button switches based on status @done(26-05-16)
+    ✔ Implement refresh handler (edit existing message) @done(26-05-16)
+    ✔ Build dashboard.keyboard.ts with all callbacks @done(26-05-16)
+  ✔ T4.2 Config Screens (5 Sub-Screens): @critical @done(26-05-16)
+    ✔ Implement Min Sell %: presets [1, 3, 5, 10, 15] + Custom @done(26-05-16)
+    ✔ Implement Max Sell %: presets [10, 15, 20, 30, 50] + Custom @done(26-05-16)
+    ✔ Implement Min MCAP: presets [$0, $10K, $50K, $100K, $500K] + Custom @done(26-05-16)
+    ✔ Implement Min Buy: presets [0.1, 0.5, 1, 2, 5 SOL] + Custom @done(26-05-16)
+    ✔ Implement Custom input mode (set session.inputState, validate, save) @done(26-05-16)
+    ✔ Cross-validate: min_sell ≤ max_sell @done(26-05-16)
+    ✔ Update project_features.config JSONB on save @done(26-05-16)
+    ✔ Log audit event: config.change with old/new values @done(26-05-16)
+    ✔ Return to dashboard after save @done(26-05-16)
+    ✔ Build config.keyboard.ts @done(26-05-16)
+  ✔ T4.3 Whitelist CRUD: @critical @done(26-05-16)
+    ✔ Implement SCR_WHITELIST: paginated list (5/page) with remove buttons @done(26-05-16)
+    ✔ Show count: "Whitelist ({count}/25)" @done(26-05-16)
+    ✔ Implement Add Whitelist: validate address + check duplicates + save @done(26-05-16)
+    ✔ Enforce MAX_WHITELIST_ENTRIES = 25 limit @done(26-05-16)
+    ✔ Implement Remove: delete + re-render list @done(26-05-16)
+    ✔ Build whitelist.keyboard.ts with pagination @done(26-05-16)
+  ✔ T4.4 My Projects & Wallets Screens: @high @done(26-05-16)
+    ✔ Implement SCR_MY_PROJECTS: list projects with status emojis @done(26-05-16)
+    ✔ Handle empty state: "No projects yet" @done(26-05-16)
+    ✔ Project selection → navigate to dashboard @done(26-05-16)
+    ✔ Implement SCR_WALLETS: list imported wallets with public keys @done(26-05-16)
+    ✔ Show wallet assignment status @done(26-05-16)
+  ✔ T4.5 Delete Project Flow: @high @done(26-05-16)
+    ✔ Implement SCR_DELETE_CONFIRM with warning message @done(26-05-16)
+    ✔ Extra warning if feature is active @done(26-05-16)
+    ✔ Confirm: ProjectService.deleteProject() → navigate to My Projects @done(26-05-16)
+    ✔ Cancel: return to dashboard @done(26-05-16)
+    ✔ Verify: soft-delete (deleted_at set, not hard delete) @done(26-05-16)
+  ✔ T4.6 Referrals & Payout Wallet: @high @done(26-05-16)
+    ✔ Implement SCR_REFERRALS: link, stats, tier counts, earnings, payout wallet @done(26-05-16)
+    ✔ Implement SCR_SET_PAYOUT_WALLET: input + validate address + save @done(26-05-16)
+    ✔ Display referral link: t.me/BeruMonarchBot?start=ref_{telegramId} @done(26-05-16)
+    ✔ Show total + pending earnings from fee_ledger @done(26-05-16)
+  ☐ T4.7 Shadow Sell Activation (Start/Stop): @critical (PARTIAL — cache/QN KV + pre-flight balance pending)
+    ☐ Start: run pre-flight checks (balance > 0, valid config) — blocked on SolanaService (T5.5)
+    ✔ Start: transition idle → pending → watching (FSM §8.1) @done(26-05-16)
+    ☐ Start: set is_watching = true, add to watched-token cache, sync QN KV — is_watching DONE; cache + QN KV pending
+    ✔ Start: create + pin MSG_PINNED_STATUS (initial state) @done(26-05-16)
+    ✔ Start: send state alert "⚡ Shadow Sell is now WATCHING" (transient, 30s) @done(26-05-16)
+    ✔ Start: disable config buttons on dashboard (invariant 23) @done(26-05-16)
+    ✔ Stop: transition watching/executing → stopped @done(26-05-16)
+    ☐ Stop: set is_watching = false, remove from cache, sync QN KV — is_watching DONE; cache + QN KV pending
+    ✔ Stop: update pinned status to "Stopped by user" @done(26-05-16)
+    ✔ Stop: re-enable config buttons on dashboard @done(26-05-16)
 
 Day 5 — March 5 — Webhook + Sell Execution Pipeline: @critical
   Goal: Full sell pipeline: QuickNode webhook → dedup → 10-step sell → Jupiter swap → notify.
-  T5.1 Hono HTTP Server Setup: @critical
-    ☐ Create src/server/index.ts — init Hono app
-    ☐ Register POST /webhook/quicknode route
-    ☐ Register POST /webhook/telegram route (Grammy webhook)
-    ☐ Register GET /health route
-    ☐ Register GET /api/waitlist/count route
-    ☐ Add global error handler + request logging (Pino)
-    ☐ Integrate in src/app.ts: start bot + start Hono on port 3000
-    ☐ Webhook mode (prod) vs polling mode (dev) toggle
+  ☐ T5.1 Hono HTTP Server Setup: @critical (PARTIAL — bootstrap + telegram webhook done; route stubs remain)
+    ✔ Create src/server/index.ts — init Hono app @done(26-05-16)
+    ☐ Register POST /webhook/quicknode route — stub file only
+    ✔ Register POST /webhook/telegram route (Grammy webhook) @done(26-05-16)
+    ☐ Register GET /health route — stub file only (server has GET / placeholder)
+    ☐ Register GET /api/waitlist/count route — stub file only
+    ✔ Add global error handler + request logging (Pino) @done(26-05-16)
+    ✔ Integrate in src/app.ts: start bot + start Hono on port 3000 @done(26-05-16) — wired in src/main.ts
+    ✔ Webhook mode (prod) vs polling mode (dev) toggle @done(26-05-16)
   T5.2 HMAC-SHA256 Webhook Verification: @critical
     ☐ Extract x-qn-signature, x-qn-timestamp, x-qn-nonce headers
     ☐ Validate timestamp: reject if |now - timestamp| > 30s (invariant 6)
@@ -305,9 +323,9 @@ Day 5 — March 5 — Webhook + Sell Execution Pipeline: @critical
     ☐ Timeout: 15s per request
     ☐ Retry: 1 retry on 5xx with 2s delay
     ☐ Error typing and logging (never log private keys)
-  T5.5 Solana Transaction Helpers: @critical
-    ☐ Create Connection from config.solana.rpcUrl
-    ☐ Implement getTokenBalance(wallet, mint)
+  ☐ T5.5 Solana Transaction Helpers: @critical (PARTIAL — only Connection + getTokenBalance live)
+    ✔ Create Connection from config.solana.rpcUrl @done(26-05-16) — src/services/solana-rpc.service.ts
+    ✔ Implement getTokenBalance(wallet, mint) @done(26-05-16)
     ☐ Implement getSolBalance(wallet)
     ☐ Implement buildCombinedFundingTx (tokens + SOL in 1 TX — the speed optimization)
     ☐ Implement buildSweepAndFeeTx (SOL sweep + fee collection atomic — invariant 18)
