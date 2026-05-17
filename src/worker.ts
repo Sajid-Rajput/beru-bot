@@ -1,14 +1,59 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
+/* eslint-disable antfu/no-top-level-await */
+
 /**
- * worker.ts — BullMQ worker process entry point
- * TODO: Implement fully in T2.x (queue/worker sprint)
- * This will spin up all background workers:
- *   - sell-execution.worker
- *   - market-cap-monitor.worker
- *   - recovery.worker
- *   - fee-payout.worker
- *   - notification.consumer
+ * worker.ts — long-lived background process for Beru Bot.
+ *
+ * Today this process owns the WatchedMintCache (T5.3b) only. BullMQ workers
+ * (sell-execution, market-cap-monitor, recovery, fee-payout, notification)
+ * and the BuyDetectorService (T5.3c) are registered here in upcoming sprints.
  */
 
-// Placeholder — workers will be registered here in T2.x
-export {}
+import process from 'node:process'
+import { closeDb, db } from '#root/db/index.js'
+import { logger } from '#root/logger.js'
+import { createRedisClient } from '#root/queue/redis.js'
+import {
+  createWatchedFeatureFetcher,
+  createWatchedFeatureLoader,
+  createWatchPubSubSubscriber,
+} from '#root/services/watched-mint-cache.adapter.js'
+import { WatchedMintCache } from '#root/services/watched-mint-cache.js'
+
+const log = logger.child({ proc: 'worker' })
+
+// Dedicated subscriber connection — ioredis requires this for pub/sub.
+// Other Redis operations continue to use the shared `redis` singleton.
+const subscriberRedis = createRedisClient(false)
+
+const watchedMintCache = new WatchedMintCache({
+  loader: createWatchedFeatureLoader(db),
+  fetchById: createWatchedFeatureFetcher(db),
+  subscribe: createWatchPubSubSubscriber(subscriberRedis),
+})
+
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
+  log.info({ signal }, 'worker shutdown')
+  await watchedMintCache.stop().catch(err => log.warn({ err }, 'cache stop failed'))
+  await subscriberRedis.quit().catch(err => log.warn({ err }, 'subscriber quit failed'))
+  await closeDb().catch(err => log.warn({ err }, 'closeDb failed'))
+}
+
+let shuttingDown = false
+function onSignal(signal: NodeJS.Signals) {
+  if (shuttingDown)
+    return
+  shuttingDown = true
+  void shutdown(signal).finally(() => process.exit(0))
+}
+process.on('SIGINT', onSignal)
+process.on('SIGTERM', onSignal)
+
+try {
+  await watchedMintCache.start()
+  log.info({ watchedMints: watchedMintCache.getAllMints().length }, 'WatchedMintCache started')
+}
+catch (err) {
+  log.error({ err }, 'worker failed to start')
+  process.exit(1)
+}
