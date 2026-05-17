@@ -73,3 +73,15 @@ export class AuthError extends BeruError {
     this.name = 'AuthError'
   }
 }
+
+/**
+ * Thrown by the Jupiter Aggregator API client (quote / swap) on
+ * non-retryable HTTP responses, exhausted retries, network failures,
+ * timeouts, or unparseable response bodies.
+ */
+export class JupiterError extends BeruError {
+  constructor(message: string, cause?: unknown) {
+    super(message, 'JUPITER_ERROR', cause)
+    this.name = 'JupiterError'
+  }
+}
