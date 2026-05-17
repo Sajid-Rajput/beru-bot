@@ -1,40 +1,85 @@
+import type { ConfirmedSignatureInfo, SignaturesForAddressOptions } from '@solana/web3.js'
 import { config } from '#root/config.js'
 import { createLogger } from '#root/utils/logger.js'
-import { Connection, PublicKey } from '@solana/web3.js'
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 
 const log = createLogger('SolanaRpcService')
 
-/**
- * SolanaRpcService — minimal wrapper around a single shared Solana Connection.
- *
- * Intentionally tiny for now: the only consumer is the "link existing wallet"
- * path, which needs to know which of a user's wallets already holds a given
- * SPL token. Rate-limiting, retries, and multi-region fallbacks are
- * out-of-scope — see plan doc.
- */
-export class SolanaRpcService {
-  private readonly connection: Connection
+const FAILOVER_HTTP_STATUSES = new Set([429, 502, 503, 504])
+const FAILOVER_NETWORK_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EPIPE'])
 
-  constructor(endpoint: string = config.solanaPrimaryRpcUrl || 'https://api.mainnet-beta.solana.com') {
-    this.connection = new Connection(endpoint, 'confirmed')
+function isFailoverError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null)
+    return false
+  const e = err as { status?: unknown, code?: unknown, message?: unknown }
+  if (typeof e.status === 'number' && FAILOVER_HTTP_STATUSES.has(e.status))
+    return true
+  if (typeof e.code === 'string' && FAILOVER_NETWORK_CODES.has(e.code))
+    return true
+  if (typeof e.message === 'string' && e.message === 'fetch failed')
+    return true
+  return false
+}
+
+export type RpcProvider = 'primary' | 'fallback'
+
+export interface SolanaRpcServiceOptions {
+  primary?: Connection
+  fallback?: Connection
+}
+
+export class SolanaRpcService {
+  readonly primaryConnection: Connection
+  readonly fallbackConnection: Connection
+  private _lastProviderUsed: RpcProvider | null = null
+
+  constructor(opts: SolanaRpcServiceOptions = {}) {
+    this.primaryConnection = opts.primary
+      ?? new Connection(config.solanaPrimaryRpcUrl || config.solanaPublicRpcUrl, 'confirmed')
+    this.fallbackConnection = opts.fallback
+      ?? new Connection(config.solanaFallbackRpcUrl || config.solanaPublicRpcUrl, 'confirmed')
   }
 
-  /**
-   * Returns the owner's total uiAmount balance of the given SPL token mint,
-   * summed across all token accounts. A single wallet can own multiple
-   * token accounts for the same mint (e.g. ATA + legacy account), so all
-   * of them are aggregated.
-   *
-   * Returns 0 on any RPC error so the caller can degrade gracefully
-   * (e.g. fall back to showing a wallet picker instead of crashing).
-   */
+  get lastProviderUsed(): RpcProvider | null {
+    return this._lastProviderUsed
+  }
+
+  async withFailover<T>(fn: (conn: Connection) => Promise<T>): Promise<T> {
+    try {
+      const result = await fn(this.primaryConnection)
+      this._lastProviderUsed = 'primary'
+      return result
+    }
+    catch (err) {
+      if (!isFailoverError(err))
+        throw err
+      log.warn({ err }, 'primary RPC failed — failing over to fallback')
+      const result = await fn(this.fallbackConnection)
+      this._lastProviderUsed = 'fallback'
+      return result
+    }
+  }
+
+  async getSignaturesForAddress(
+    account: string,
+    options?: SignaturesForAddressOptions,
+  ): Promise<ConfirmedSignatureInfo[]> {
+    const accountKey = new PublicKey(account)
+    return this.withFailover(conn => conn.getSignaturesForAddress(accountKey, options))
+  }
+
+  async getSolBalance(wallet: string): Promise<number> {
+    const walletKey = new PublicKey(wallet)
+    const lamports = await this.withFailover(conn => conn.getBalance(walletKey))
+    return lamports / LAMPORTS_PER_SOL
+  }
+
   async getTokenBalance(owner: string, mint: string): Promise<number> {
     try {
       const ownerKey = new PublicKey(owner)
       const mintKey = new PublicKey(mint)
-      const { value } = await this.connection.getParsedTokenAccountsByOwner(
-        ownerKey,
-        { mint: mintKey },
+      const { value } = await this.withFailover(conn =>
+        conn.getParsedTokenAccountsByOwner(ownerKey, { mint: mintKey }),
       )
       return value.reduce((sum, { account }) => {
         const amount = account.data.parsed?.info?.tokenAmount?.uiAmount
@@ -42,7 +87,7 @@ export class SolanaRpcService {
       }, 0)
     }
     catch (err) {
-      log.warn({ err, owner, mint }, 'getTokenBalance failed — returning 0')
+      log.warn({ err, owner, mint, provider: this._lastProviderUsed }, 'getTokenBalance failed — returning 0')
       return 0
     }
   }
