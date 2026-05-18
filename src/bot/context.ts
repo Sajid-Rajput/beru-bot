@@ -1,5 +1,5 @@
 import type { Config } from '#root/config.js'
-import type { Logger } from '#root/logger.js'
+import type { Logger } from '#root/utils/logger.js'
 import type { AutoChatActionFlavor } from '@grammyjs/auto-chat-action'
 import type { ConversationFlavor } from '@grammyjs/conversations'
 import type { HydrateFlavor } from '@grammyjs/hydrate'

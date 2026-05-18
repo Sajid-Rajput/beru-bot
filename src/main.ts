@@ -7,9 +7,9 @@ import process from 'node:process'
 import { createBot } from '#root/bot/index.js'
 import { config } from '#root/config.js'
 import { closeDb } from '#root/db/index.js'
-import { logger } from '#root/logger.js'
 import { closeRedis } from '#root/queue/redis.js'
 import { createServer, createServerManager } from '#root/server/index.js'
+import { logger } from '#root/utils/logger.js'
 import { run } from '@grammyjs/runner'
 
 async function startPolling(config: PollingConfig) {

@@ -17,8 +17,8 @@ import {
 } from '#root/buy-detector/watched-mint-cache.adapter.js'
 import { WatchedMintCache } from '#root/buy-detector/watched-mint-cache.js'
 import { closeDb, db } from '#root/db/index.js'
-import { logger } from '#root/logger.js'
 import { createRedisClient } from '#root/queue/redis.js'
+import { logger } from '#root/utils/logger.js'
 
 const log = logger.child({ proc: 'worker' })
 

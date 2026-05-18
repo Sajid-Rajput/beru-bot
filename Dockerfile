@@ -39,7 +39,7 @@ COPY --from=builder /app/drizzle ./drizzle
 USER node
 
 EXPOSE 3000
-CMD ["node", "build/src/app.js"]
+CMD ["node", "build/src/main.js"]
 
 # ---- Worker ----
 # Production image: BullMQ workers (sell execution, MCAP monitor, recovery, fee payout)

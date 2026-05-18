@@ -1,4 +1,4 @@
-import type { Logger } from '#root/logger.js'
+import type { Logger } from '#root/utils/logger.js'
 import type { MiddlewareHandler } from 'hono'
 
 export function setLogger(logger: Logger): MiddlewareHandler {

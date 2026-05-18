@@ -1,6 +1,6 @@
 import type { Context } from '#root/bot/context.js'
 import type { Config } from '#root/config.js'
-import type { Logger } from '#root/logger.js'
+import type { Logger } from '#root/utils/logger.js'
 import type { BotConfig } from 'grammy'
 import { adminFeature } from '#root/bot/features/admin.js'
 import { languageFeature } from '#root/bot/features/language.js'

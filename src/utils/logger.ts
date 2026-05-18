@@ -54,3 +54,5 @@ export const logger = pino(
 export function createLogger(module: string): pino.Logger {
   return logger.child({ module })
 }
+
+export type Logger = typeof logger

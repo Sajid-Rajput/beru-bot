@@ -6,9 +6,9 @@ import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.
 import { ProjectRepository } from '#root/db/repositories/project.repository.js'
 import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
 import { WhitelistRepository } from '#root/db/repositories/whitelist.repository.js'
-import { logger } from '#root/logger.js'
 import { dexscreenerService } from '#root/services/dexscreener.service.js'
 import { BeruError } from '#root/utils/errors.js'
+import { logger } from '#root/utils/logger.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 

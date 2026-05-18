@@ -1,4 +1,4 @@
-import { logger } from '#root/logger.js'
+import { logger } from '#root/utils/logger.js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
