@@ -137,3 +137,4 @@ data/
 *.db-journal
 # VS Code MCP secrets
 .vscode/mcp.json
+tmp/
