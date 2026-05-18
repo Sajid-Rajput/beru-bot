@@ -1,6 +1,24 @@
 import type { ShadowSellConfig } from '#root/db/schema/index.js'
 
 /**
+ * Frozen view of one referrer in the chain. Kept on the cache entry so the
+ * matcher can construct `SellJob.referralSnapshot` without re-reading the DB.
+ */
+export interface ReferrerSnapshot {
+  userId: string
+  sharePct: number
+}
+
+/**
+ * Two-tier referrer chain captured at load time. Either tier can be `null`
+ * if the feature owner has no referrer at that level.
+ */
+export interface ReferralSnapshot {
+  tier1: ReferrerSnapshot | null
+  tier2: ReferrerSnapshot | null
+}
+
+/**
  * A Project Feature row projected into the shape the Buy Detector needs:
  * enough to identify the feature and enqueue a sell job without another DB hit.
  */
@@ -10,6 +28,7 @@ export interface ProjectFeatureConfig {
   userId: string
   mint: string
   config: ShadowSellConfig
+  referralSnapshot: ReferralSnapshot
 }
 
 export interface WatchPayload {
@@ -17,20 +36,32 @@ export interface WatchPayload {
   featureId: string
 }
 
-export type WatchChannel = 'watch:add' | 'watch:remove'
+export interface ReferralChangedPayload {
+  userId: string
+}
 
-export interface WatchedMintCacheDeps {
+export type WatchChannel = 'watch:add' | 'watch:remove'
+export type CacheChannel = WatchChannel | 'referral:changed'
+
+/** Compile-time map from channel name to the payload shape its handler receives. */
+export interface ChannelPayloadMap {
+  'watch:add': WatchPayload
+  'watch:remove': WatchPayload
+  'referral:changed': ReferralChangedPayload
+}
+
+export interface WatchedFeatureCacheDeps {
   /** Returns all currently-watched Project Features. Used at start() and reconcile(). */
   loader: () => Promise<ProjectFeatureConfig[]>
-  /** Fetches a single Project Feature by id. Used on `watch:add`. */
+  /** Fetches a single Project Feature by id. Used on `watch:add` and `referral:changed`. */
   fetchById: (featureId: string) => Promise<ProjectFeatureConfig | undefined>
   /**
    * Subscribes to a Redis pub/sub channel. Returns an unsubscribe fn that
    * `stop()` invokes. The seam decodes JSON before calling the handler.
    */
-  subscribe: (
-    channel: WatchChannel,
-    handler: (payload: WatchPayload) => Promise<void> | void,
+  subscribe: <C extends CacheChannel>(
+    channel: C,
+    handler: (payload: ChannelPayloadMap[C]) => Promise<void> | void,
   ) => Promise<() => Promise<void>>
   /** Reconcile interval in ms. Default 60_000. Set to 0 to disable the timer (tests). */
   reconcileIntervalMs?: number
@@ -38,13 +69,13 @@ export interface WatchedMintCacheDeps {
 
 const DEFAULT_RECONCILE_INTERVAL_MS = 60_000
 
-export class WatchedMintCache {
-  private readonly deps: WatchedMintCacheDeps
+export class WatchedFeatureCache {
+  private readonly deps: WatchedFeatureCacheDeps
   private readonly byMint = new Map<string, ProjectFeatureConfig[]>()
   private readonly unsubscribers: Array<() => Promise<void>> = []
   private reconcileTimer: NodeJS.Timeout | null = null
 
-  constructor(deps: WatchedMintCacheDeps) {
+  constructor(deps: WatchedFeatureCacheDeps) {
     this.deps = deps
   }
 
@@ -64,6 +95,11 @@ export class WatchedMintCache {
       this.remove(mint, featureId)
     })
     this.unsubscribers.push(unsubRemove)
+
+    const unsubReferral = await this.deps.subscribe('referral:changed', async ({ userId }) => {
+      await this.refreshByUserId(userId)
+    })
+    this.unsubscribers.push(unsubReferral)
 
     const intervalMs = this.deps.reconcileIntervalMs ?? DEFAULT_RECONCILE_INTERVAL_MS
     if (intervalMs > 0) {
@@ -132,5 +168,33 @@ export class WatchedMintCache {
       this.byMint.delete(mint)
     else
       this.byMint.set(mint, next)
+  }
+
+  private async refreshByUserId(userId: string): Promise<void> {
+    const featureIds: string[] = []
+    for (const entries of this.byMint.values()) {
+      for (const e of entries) {
+        if (e.userId === userId)
+          featureIds.push(e.featureId)
+      }
+    }
+    if (featureIds.length === 0)
+      return
+
+    for (const featureId of featureIds) {
+      const fresh = await this.deps.fetchById(featureId)
+      if (fresh)
+        this.replace(fresh)
+    }
+  }
+
+  private replace(row: ProjectFeatureConfig): void {
+    const list = this.byMint.get(row.mint)
+    if (!list)
+      return
+    const idx = list.findIndex(e => e.featureId === row.featureId)
+    if (idx === -1)
+      return
+    list[idx] = row
   }
 }
