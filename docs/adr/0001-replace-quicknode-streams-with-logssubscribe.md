@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-05-17
+accepted: 2026-05-17
 ---
 
 # Replace QuickNode Streams with self-hosted `logsSubscribe` for buy detection
