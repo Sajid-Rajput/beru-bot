@@ -1,4 +1,4 @@
-import type { NotificationJobData, SellJobData } from './types.js'
+import type { NotificationJob, SellJobData } from './types.js'
 
 import { config } from '#root/config.js'
 import {
@@ -52,8 +52,14 @@ export const feePayoutQueue = new Queue<Record<string, never>>(QUEUE_FEE_PAYOUT,
   defaultJobOptions: { removeOnComplete: 1, removeOnFail: 10 },
 })
 
-/** Notification queue — consumed by NotificationService (concurrency 10) */
-export const notificationQueue = new Queue<NotificationJobData>(QUEUE_NOTIFICATION, {
+/**
+ * Notification queue (ADR-0002 N-2).
+ *
+ * Cross-process seam: worker-side subsystems enqueue fat-payload
+ * `NotificationJob`s; the bot process consumes and renders. The consumer
+ * makes zero DB reads — every job carries everything needed to render.
+ */
+export const notificationQueue = new Queue<NotificationJob>(QUEUE_NOTIFICATION, {
   connection,
   defaultJobOptions: {
     attempts: 3,
@@ -81,19 +87,6 @@ export async function enqueueSellJob(data: SellJobData): Promise<void> {
     { tokenMint: data.tokenMint, featureId: data.projectFeatureId },
     'Sell job enqueued',
   )
-}
-
-/**
- * Enqueue a notification.
- * Non-critical: log but don't throw if queue is unavailable.
- */
-export async function enqueueNotification(data: NotificationJobData): Promise<void> {
-  try {
-    await notificationQueue.add(`notify:${data.telegramId}:${data.type}`, data)
-  }
-  catch (err) {
-    log.warn({ err, data }, 'Failed to enqueue notification')
-  }
 }
 
 /**

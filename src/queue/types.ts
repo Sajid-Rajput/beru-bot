@@ -21,26 +21,67 @@ export interface SellJobData {
   projectId: string
 }
 
-// ── Notification Queue ────────────────────────────────────────────────────────
+// ── Notification Queue (ADR-0002 N-2, fat payload) ────────────────────────────
+//
+// Cross-process seam: subsystems running in the worker process enqueue a
+// fat-payload Notification job; the bot process consumes it and renders the
+// Telegram message. Every job carries everything needed to render — the
+// consumer makes zero DB reads. See `docs/adr/0002-sell-execution-state-machine.md`
+// decision 6 and the `Notification` entry in `CONTEXT.md`.
 
-export type NotificationType =
-  | 'sell.completed'
-  | 'sell.failed'
-  | 'feature.activated'
-  | 'feature.paused'
-  | 'feature.completed'
-  | 'feature.error'
-  | 'payout.sent'
-  | 'recovery.success'
-  | 'recovery.failed'
-  | 'referral.join'
+export type NotificationJob =
+  | {
+    userId: string
+    kind: 'sell.completed'
+    context: {
+      mint: string
+      symbol: string
+      soldTokens: number
+      receivedSol: number
+      txSignatures: { trigger: string, sweep: string }
+    }
+  }
+  | {
+    userId: string
+    kind: 'sell.failed'
+    context: {
+      mint: string
+      symbol: string
+      reason: string
+    }
+  }
+  | {
+    userId: string
+    kind: 'sell.recovered'
+    context: {
+      mint: string
+      symbol: string
+    }
+  }
+  | {
+    userId: string
+    kind: 'payout.sent'
+    context: {
+      amountSol: number
+      txSignature: string
+    }
+  }
+  | {
+    userId: string
+    kind: 'state.alert'
+    context: {
+      message: string
+      projectId: string
+    }
+  }
+  | {
+    userId: string
+    kind: 'admin.alert'
+    context: {
+      severity: string
+      message: string
+    }
+  }
 
-/** Payload enqueued whenever a user needs to be notified */
-export interface NotificationJobData {
-  /** Telegram user ID to send the notification to */
-  telegramId: number
-  /** Notification type — determines message template */
-  type: NotificationType
-  /** Type-specific extra data for message template population */
-  data: Record<string, unknown>
-}
+/** Discriminant values of {@link NotificationJob} — useful for exhaustive switches. */
+export type NotificationKind = NotificationJob['kind']

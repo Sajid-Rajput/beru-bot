@@ -6,7 +6,7 @@ export const QUEUE_SELL_EXECUTION = 'sell-execution'
 export const QUEUE_MARKET_CAP_MONITOR = 'market-cap-monitor'
 export const QUEUE_RECOVERY = 'recovery'
 export const QUEUE_FEE_PAYOUT = 'fee-payout'
-export const QUEUE_NOTIFICATION = 'notification'
+export const QUEUE_NOTIFICATION = 'notification-queue'
 
 // ── Solana ────────────────────────────────────────────────────────────────
 export const SOLANA_COMMITMENT = 'confirmed' as const
