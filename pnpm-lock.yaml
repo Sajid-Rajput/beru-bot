@@ -11,6 +11,9 @@ importers:
       '@grammyjs/auto-chat-action':
         specifier: 0.1.1
         version: 0.1.1(grammy@1.35.0)
+      '@grammyjs/auto-retry':
+        specifier: ^2.0.2
+        version: 2.0.2(grammy@1.35.0)
       '@grammyjs/commands':
         specifier: 1.0.5
         version: 1.0.5(grammy@1.35.0)
@@ -767,6 +770,12 @@ packages:
     resolution: {integrity: sha512-70Jdy+keIri4452tluaZpKtHag5gD8pNczoXqajsnsx7pJC5wg3DAQ5unpt0xJb8KsVBAGWuJb298SBl3TVecg==}
     peerDependencies:
       grammy: ^1.0.0
+
+  '@grammyjs/auto-retry@2.0.2':
+    resolution: {integrity: sha512-b4A4p5jlYDiQtW0c0FXYe11WMkYoiW+5rvOaDMCOk1h7Pu2SDl7B7gmFF8cthWCx2+M2nWLOsBxAgbBG4kKWYg==}
+    engines: {node: '>=12.20.0 || >=14.13.1'}
+    peerDependencies:
+      grammy: ^1.10.0
 
   '@grammyjs/commands@1.0.5':
     resolution: {integrity: sha512-7CiI63Ye5ysdqhwQV7cEFZGQOWJLDPJSoOAeIqI+SXIlwvTjqSRSlTG2e4OfhgF2t/3G3OdC5bPrZb7oQkYfBw==}
@@ -3761,6 +3770,13 @@ snapshots:
   '@grammyjs/auto-chat-action@0.1.1(grammy@1.35.0)':
     dependencies:
       grammy: 1.35.0
+
+  '@grammyjs/auto-retry@2.0.2(grammy@1.35.0)':
+    dependencies:
+      debug: 4.4.3
+      grammy: 1.35.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@grammyjs/commands@1.0.5(grammy@1.35.0)':
     dependencies:
