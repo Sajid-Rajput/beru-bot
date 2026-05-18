@@ -37,17 +37,6 @@ export const transactionStatusEnum = pgEnum('transaction_status', [
   'recovery_needed',
 ])
 
-// ── Ephemeral wallet lifecycle status ──
-export const ephemeralStatusEnum = pgEnum('ephemeral_status', [
-  'created',
-  'funded',
-  'swapping',
-  'completed',
-  'recovery_needed',
-  'recovered',
-  'failed',
-])
-
 // ── Fee collection status ──
 export const feeCollectionStatusEnum = pgEnum('fee_collection_status', [
   'pending',
