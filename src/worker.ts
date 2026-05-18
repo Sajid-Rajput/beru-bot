@@ -10,15 +10,15 @@
  */
 
 import process from 'node:process'
-import { closeDb, db } from '#root/db/index.js'
-import { logger } from '#root/logger.js'
-import { createRedisClient } from '#root/queue/redis.js'
 import {
   createWatchedFeatureFetcher,
   createWatchedFeatureLoader,
   createWatchPubSubSubscriber,
-} from '#root/services/watched-mint-cache.adapter.js'
-import { WatchedMintCache } from '#root/services/watched-mint-cache.js'
+} from '#root/buy-detector/watched-mint-cache.adapter.js'
+import { WatchedMintCache } from '#root/buy-detector/watched-mint-cache.js'
+import { closeDb, db } from '#root/db/index.js'
+import { logger } from '#root/logger.js'
+import { createRedisClient } from '#root/queue/redis.js'
 
 const log = logger.child({ proc: 'worker' })
 
