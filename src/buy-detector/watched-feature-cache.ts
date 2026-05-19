@@ -27,6 +27,7 @@ export interface ProjectFeatureConfig {
   projectId: string
   userId: string
   mint: string
+  mainWalletPubkey: string
   config: ShadowSellConfig
   referralSnapshot: ReferralSnapshot
 }

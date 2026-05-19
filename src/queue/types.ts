@@ -5,20 +5,50 @@
 
 // ── Sell Execution Queue ──────────────────────────────────────────────────────
 
-/** Payload enqueued by StreamWebhookHandler when a qualifying buy is detected */
+import type { ShadowSellConfig } from '#root/db/schema/index.js'
+
+/**
+ * Frozen view of one referrer in the chain, captured by the Buy Detector when
+ * the buy was matched. Mirrors `ReferrerSnapshot` from the WatchedFeatureCache.
+ */
+export interface SellJobReferrerSnapshot {
+  userId: string
+  sharePct: number
+}
+
+/** Two-tier referrer chain snapshot. Either tier may be null. */
+export interface SellJobReferralSnapshot {
+  tier1: SellJobReferrerSnapshot | null
+  tier2: SellJobReferrerSnapshot | null
+}
+
+/**
+ * Fully-resolved Sell Execution payload, per ADR-0002 decision 1 (Shape A).
+ *
+ * The Buy Detector has already matched against thresholds, picked a concrete
+ * `sellPercentage`, snapshotted the owner's referrer chain, and deduped by
+ * `triggerSignature`. The executor runs against this snapshot alone — no
+ * cache reads, no live config or referral lookups.
+ */
 export interface SellJobData {
-  /** Solana token mint address that was bought */
-  tokenMint: string
-  /** Buyer's Solana wallet address */
-  buyerAddress: string
-  /** Amount of SOL spent by the buyer */
+  /** Schema version of this payload (bump when shape changes). */
+  schemaVersion: 1
+  /** UUID of the project_feature this sell belongs to. */
+  featureId: string
+  /** On-chain signature of the buy transaction. Idempotency key. */
+  triggerSignature: string
+  /** SPL token mint address that was bought. */
+  mint: string
+  /** Public key of the user's main wallet (sweep destination). */
+  mainWalletPubkey: string
+  /** Integer percentage of the user's holding to sell (resolved at match time). */
+  sellPercentage: number
+  /** Frozen copy of the feature's ShadowSell config at match time. */
+  configSnapshot: ShadowSellConfig
+  /** Amount of SOL spent by the buyer that triggered this sell. */
   buyAmountSol: number
-  /** On-chain signature of the buy transaction (used for dedup) */
-  triggerTxSignature: string
-  /** UUID of the project_feature that should respond to this buy */
-  projectFeatureId: string
-  /** UUID of the project */
-  projectId: string
+  /** Referrer chain captured at match time. */
+  referralSnapshot: SellJobReferralSnapshot
 }
 
 // ── Notification Queue (ADR-0002 N-2, fat payload) ────────────────────────────

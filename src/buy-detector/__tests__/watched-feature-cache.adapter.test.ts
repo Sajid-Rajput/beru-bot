@@ -184,6 +184,7 @@ describe('createWatchedFeatureLoader', () => {
       projectId: 'proj-1',
       userId: 'user-owner',
       mint: 'Mint1111111111111111111111111111111111111111',
+      mainWalletPubkey: 'Wallet11111111111111111111111111111111111111',
       config: SHADOW_CONFIG,
       tier1ReferrerId: 'user-tier1',
       tier2ReferrerId: 'user-tier2',
@@ -204,6 +205,7 @@ describe('createWatchedFeatureLoader', () => {
       projectId: 'proj-1',
       userId: 'user-orphan',
       mint: 'Mint1111111111111111111111111111111111111111',
+      mainWalletPubkey: 'Wallet11111111111111111111111111111111111111',
       config: SHADOW_CONFIG,
       tier1ReferrerId: null,
       tier2ReferrerId: null,
@@ -215,12 +217,31 @@ describe('createWatchedFeatureLoader', () => {
     expect(entry.referralSnapshot).toEqual({ tier1: null, tier2: null })
   })
 
+  it('maps the joined wallet public key onto mainWalletPubkey', async () => {
+    const db = makeFakeDb([{
+      featureId: 'feat-1',
+      projectId: 'proj-1',
+      userId: 'user-owner',
+      mint: 'Mint1111111111111111111111111111111111111111',
+      mainWalletPubkey: 'WalletZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ',
+      config: SHADOW_CONFIG,
+      tier1ReferrerId: null,
+      tier2ReferrerId: null,
+    }])
+
+    const loader = createWatchedFeatureLoader(db)
+    const [entry] = await loader()
+
+    expect(entry.mainWalletPubkey).toBe('WalletZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ')
+  })
+
   it('returns a mixed chain when only the tier-1 referrer exists', async () => {
     const db = makeFakeDb([{
       featureId: 'feat-1',
       projectId: 'proj-1',
       userId: 'user-owner',
       mint: 'Mint1111111111111111111111111111111111111111',
+      mainWalletPubkey: 'Wallet11111111111111111111111111111111111111',
       config: SHADOW_CONFIG,
       tier1ReferrerId: 'user-tier1',
       tier2ReferrerId: null,
@@ -243,6 +264,7 @@ describe('createWatchedFeatureFetcher', () => {
       projectId: 'proj-1',
       userId: 'user-owner',
       mint: 'Mint1111111111111111111111111111111111111111',
+      mainWalletPubkey: 'Wallet11111111111111111111111111111111111111',
       config: SHADOW_CONFIG,
       tier1ReferrerId: 'user-tier1',
       tier2ReferrerId: 'user-tier2',

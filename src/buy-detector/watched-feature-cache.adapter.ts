@@ -11,7 +11,7 @@ import type {
   WatchPayload,
 } from './watched-feature-cache.js'
 
-import { projectFeatures, projects, referrals } from '#root/db/schema/index.js'
+import { projectFeatures, projects, referrals, wallets } from '#root/db/schema/index.js'
 import { REFERRAL_TIER1_PCT, REFERRAL_TIER2_PCT } from '#root/utils/constants.js'
 import { createLogger } from '#root/utils/logger.js'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -116,6 +116,7 @@ interface FeatureRow {
   projectId: string
   userId: string
   mint: string
+  mainWalletPubkey: string
   config: unknown
   tier1ReferrerId: string | null
   tier2ReferrerId: string | null
@@ -138,6 +139,7 @@ function mapRow(row: FeatureRow): ProjectFeatureConfig {
     projectId: row.projectId,
     userId: row.userId,
     mint: row.mint,
+    mainWalletPubkey: row.mainWalletPubkey,
     config: row.config as ShadowSellConfig,
     referralSnapshot: buildReferralSnapshot(row),
   }
@@ -162,12 +164,14 @@ export function createWatchedFeatureLoader(
         projectId: projectFeatures.projectId,
         userId: projects.userId,
         mint: projects.tokenMint,
+        mainWalletPubkey: wallets.publicKey,
         config: projectFeatures.config,
         tier1ReferrerId: tier1Ref.referrerId,
         tier2ReferrerId: tier2Ref.referrerId,
       })
       .from(projectFeatures)
       .innerJoin(projects, eq(projectFeatures.projectId, projects.id))
+      .innerJoin(wallets, eq(wallets.id, projects.walletId))
       .leftJoin(tier1Ref, and(eq(tier1Ref.referredId, projects.userId), eq(tier1Ref.tier, 1)))
       .leftJoin(tier2Ref, and(eq(tier2Ref.referredId, projects.userId), eq(tier2Ref.tier, 2)))
       .where(and(eq(projectFeatures.isWatchingTransactions, true), isNull(projects.deletedAt)))
@@ -194,12 +198,14 @@ export function createWatchedFeatureFetcher(
         projectId: projectFeatures.projectId,
         userId: projects.userId,
         mint: projects.tokenMint,
+        mainWalletPubkey: wallets.publicKey,
         config: projectFeatures.config,
         tier1ReferrerId: tier1Ref.referrerId,
         tier2ReferrerId: tier2Ref.referrerId,
       })
       .from(projectFeatures)
       .innerJoin(projects, eq(projectFeatures.projectId, projects.id))
+      .innerJoin(wallets, eq(wallets.id, projects.walletId))
       .leftJoin(tier1Ref, and(eq(tier1Ref.referredId, projects.userId), eq(tier1Ref.tier, 1)))
       .leftJoin(tier2Ref, and(eq(tier2Ref.referredId, projects.userId), eq(tier2Ref.tier, 2)))
       .where(and(eq(projectFeatures.id, featureId), isNull(projects.deletedAt)))

@@ -72,19 +72,16 @@ export const notificationQueue = new Queue<NotificationJob>(QUEUE_NOTIFICATION, 
 // ── Producer helpers ──────────────────────────────────────────────────────────
 
 /**
- * Enqueue a sell job.
- * `featureId` is used as the job ID to prevent duplicate queuing for the same
- * feature (BullMQ dedup: if a job with the same ID exists and is waiting,
- * the new enqueue is a no-op).
+ * Enqueue a sell job. The Buy Detector's enqueuer is the only producer; it
+ * has already deduped by `triggerSignature` in Redis. BullMQ jobId is
+ * `sell:<featureId>:<triggerSignature>` so a single buy fanning out to
+ * multiple features stays distinct per (feature, signature) pair.
  */
 export async function enqueueSellJob(data: SellJobData): Promise<void> {
-  await sellExecutionQueue.add(
-    `sell:${data.triggerTxSignature}`,
-    data,
-    { jobId: `sell:${data.triggerTxSignature}` }, // dedup by tx signature
-  )
+  const jobId = `sell:${data.featureId}:${data.triggerSignature}`
+  await sellExecutionQueue.add(jobId, data, { jobId })
   log.debug(
-    { tokenMint: data.tokenMint, featureId: data.projectFeatureId },
+    { mint: data.mint, featureId: data.featureId, triggerSignature: data.triggerSignature },
     'Sell job enqueued',
   )
 }

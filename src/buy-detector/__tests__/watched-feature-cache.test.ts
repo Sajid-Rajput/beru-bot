@@ -15,6 +15,7 @@ function makeConfig(overrides: Partial<ProjectFeatureConfig> = {}): ProjectFeatu
     projectId: 'proj-1',
     userId: 'user-1',
     mint: MINT_A,
+    mainWalletPubkey: 'WalletAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     config: {
       minSellPercentage: 10,
       maxSellPercentage: 50,
