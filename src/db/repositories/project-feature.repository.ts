@@ -18,6 +18,17 @@ export class ProjectFeatureRepository {
     return db.query.projectFeatures.findFirst({ where: eq(projectFeatures.id, id) })
   }
 
+  /** Resolves the owning user_id for a feature via its parent project — used by sell-execution. */
+  async findUserIdById(id: string): Promise<string | undefined> {
+    const [row] = await db
+      .select({ userId: projects.userId })
+      .from(projectFeatures)
+      .innerJoin(projects, eq(projectFeatures.projectId, projects.id))
+      .where(eq(projectFeatures.id, id))
+      .limit(1)
+    return row?.userId
+  }
+
   async findByProjectId(projectId: string): Promise<ProjectFeatureRecord | undefined> {
     return db.query.projectFeatures.findFirst({
       where: eq(projectFeatures.projectId, projectId),

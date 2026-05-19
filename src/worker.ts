@@ -30,6 +30,7 @@ import { createRedisClient, redis } from '#root/queue/redis.js'
 import { SolanaRpcService } from '#root/services/solana-rpc.service.js'
 import { DexProgramId } from '#root/utils/dex-programs.js'
 import { logger } from '#root/utils/logger.js'
+import { registerSellExecutionWorker } from '#root/workers/sell-execution.worker.js'
 
 const log = logger.child({ proc: 'worker' })
 
@@ -62,9 +63,17 @@ const buyDetector = new BuyDetector({
   },
 })
 
+const sellExecutionWorker = registerSellExecutionWorker({
+  connection: { url: config.redisUrl },
+  redis,
+  rpc,
+  logger: log,
+})
+
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   log.info({ signal }, 'worker shutdown')
   await buyDetector.stop().catch(err => log.warn({ err }, 'BuyDetector stop failed'))
+  await sellExecutionWorker.stop().catch(err => log.warn({ err }, 'sell-execution worker stop failed'))
   await subscriberRedis.quit().catch(err => log.warn({ err }, 'subscriber quit failed'))
   await closeDb().catch(err => log.warn({ err }, 'closeDb failed'))
 }
