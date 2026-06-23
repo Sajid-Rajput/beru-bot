@@ -13,7 +13,9 @@ import { AuditLogRepository } from '#root/db/repositories/audit-log.repository.j
 import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.repository.js'
 import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
 import { WhitelistRepository } from '#root/db/repositories/whitelist.repository.js'
+import { redis } from '#root/queue/redis.js'
 import { projectService } from '#root/services/project.service.js'
+import { WatchEventPublisher } from '#root/services/watch-event-publisher.js'
 import { createLogger } from '#root/utils/logger.js'
 import { Composer } from 'grammy'
 
@@ -22,6 +24,13 @@ const featureRepo = new ProjectFeatureRepository()
 const walletRepo = new WalletRepository()
 const whitelistRepo = new WhitelistRepository()
 const auditRepo = new AuditLogRepository()
+
+// Fast-path notifier to the worker's WatchedFeatureCache (issue #24). The DB
+// `is_watching_transactions` flip is the durable truth; this publish just lets
+// the worker react in ms instead of waiting for the 60s reconcile.
+const watchPublisher = new WatchEventPublisher({
+  publish: (channel, message) => redis.publish(channel, message),
+})
 
 const composer = new Composer<Context>()
 const feature = composer.chatType('private')
@@ -147,7 +156,8 @@ feature.callbackQuery(
         await featureRepo.updateStatus(pf.id, 'watching')
         await featureRepo.setWatching(pf.id, true)
 
-        // TODO: Add to watched-token cache + sync QN KV
+        // Notify the worker's WatchedFeatureCache (issue #24)
+        await watchPublisher.publishWatchAdd({ mint: project.tokenMint, featureId: pf.id })
 
         // Create + pin status message
         const pinnedMsg = await ctx.sendPinnedStatusMessage(
@@ -217,7 +227,8 @@ feature.callbackQuery(
       await featureRepo.updateStatus(pf.id, 'stopped')
       await featureRepo.setWatching(pf.id, false)
 
-      // TODO: Remove from watched-token cache + sync QN KV
+      // Notify the worker's WatchedFeatureCache (issue #24)
+      await watchPublisher.publishWatchRemove({ mint: project.tokenMint, featureId: pf.id })
 
       if (pf.pinnedMessageId) {
         const config = pf.config as ShadowSellConfig
