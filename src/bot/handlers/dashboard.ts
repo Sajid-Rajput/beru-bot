@@ -14,7 +14,9 @@ import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.
 import { WalletRepository } from '#root/db/repositories/wallet.repository.js'
 import { WhitelistRepository } from '#root/db/repositories/whitelist.repository.js'
 import { redis } from '#root/queue/redis.js'
+import { PreflightCheckService } from '#root/services/preflight-check.service.js'
 import { projectService } from '#root/services/project.service.js'
+import { SolanaRpcService } from '#root/services/solana-rpc.service.js'
 import { WatchEventPublisher } from '#root/services/watch-event-publisher.js'
 import { createLogger } from '#root/utils/logger.js'
 import { Composer } from 'grammy'
@@ -24,6 +26,7 @@ const featureRepo = new ProjectFeatureRepository()
 const walletRepo = new WalletRepository()
 const whitelistRepo = new WhitelistRepository()
 const auditRepo = new AuditLogRepository()
+const preflightCheck = new PreflightCheckService(new SolanaRpcService())
 
 // Fast-path notifier to the worker's WatchedFeatureCache (issue #24). The DB
 // `is_watching_transactions` flip is the durable truth; this publish just lets
@@ -146,7 +149,24 @@ feature.callbackQuery(
 
       const config = pf.config as ShadowSellConfig
 
-      // TODO: Pre-flight balance checks when SolanaService is implemented
+      // Pre-flight balance check (#18): never arm Shadow Sell against a wallet
+      // that can't pay gas or holds none of the token it's meant to sell.
+      const wallet = await walletRepo.findById(project.walletId)
+      if (!wallet) {
+        await ctx.sendTransientMessage('❌ Project wallet not found — cannot start Shadow Sell.')
+        return
+      }
+
+      const preflight = await preflightCheck.checkStartBalances(wallet.publicKey, project.tokenMint)
+      if (!preflight.ok) {
+        await ctx.sendTransientMessage(`❌ ${preflight.message}`)
+        await auditRepo.create({
+          userId: ctx.session.user.id,
+          eventType: 'feature.start_blocked',
+          eventData: { projectId, featureId: pf.id, reason: preflight.reason },
+        })
+        return
+      }
 
       // Transition: idle/stopped/completed/error → pending
       await featureRepo.updateStatus(pf.id, 'pending')

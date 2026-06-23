@@ -74,17 +74,27 @@ export class SolanaRpcService {
     return lamports / LAMPORTS_PER_SOL
   }
 
+  /**
+   * Sum the owner's uiAmount across all token accounts for `mint`. Unlike
+   * {@link getTokenBalance}, a read failure (both RPCs exhausted) is THROWN, not
+   * swallowed — so callers can tell "wallet holds zero" apart from "couldn't
+   * read the balance". The pre-flight check (#18) relies on that distinction.
+   */
+  async getTokenBalanceOrThrow(owner: string, mint: string): Promise<number> {
+    const ownerKey = new PublicKey(owner)
+    const mintKey = new PublicKey(mint)
+    const { value } = await this.withFailover(conn =>
+      conn.getParsedTokenAccountsByOwner(ownerKey, { mint: mintKey }),
+    )
+    return value.reduce((sum, { account }) => {
+      const amount = account.data.parsed?.info?.tokenAmount?.uiAmount
+      return sum + (typeof amount === 'number' ? amount : 0)
+    }, 0)
+  }
+
   async getTokenBalance(owner: string, mint: string): Promise<number> {
     try {
-      const ownerKey = new PublicKey(owner)
-      const mintKey = new PublicKey(mint)
-      const { value } = await this.withFailover(conn =>
-        conn.getParsedTokenAccountsByOwner(ownerKey, { mint: mintKey }),
-      )
-      return value.reduce((sum, { account }) => {
-        const amount = account.data.parsed?.info?.tokenAmount?.uiAmount
-        return sum + (typeof amount === 'number' ? amount : 0)
-      }, 0)
+      return await this.getTokenBalanceOrThrow(owner, mint)
     }
     catch (err) {
       log.warn({ err, owner, mint, provider: this._lastProviderUsed }, 'getTokenBalance failed — returning 0')
