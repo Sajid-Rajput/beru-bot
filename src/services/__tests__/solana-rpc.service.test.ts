@@ -200,6 +200,34 @@ describe('solanaRpcService.getTokenBalance', () => {
   })
 })
 
+describe('solanaRpcService.getTokenBalanceOrThrow', () => {
+  it('aggregates uiAmount across the owner\'s token accounts', async () => {
+    const primary = stubConnection()
+    ;(primary as unknown as { getParsedTokenAccountsByOwner: unknown }).getParsedTokenAccountsByOwner
+      = vi.fn().mockResolvedValue(tokenAccounts([4, 6]))
+    const fallback = stubConnection()
+    const service = new SolanaRpcService({ primary, fallback })
+
+    await expect(service.getTokenBalanceOrThrow(OWNER, MINT)).resolves.toBe(10)
+    expect(service.lastProviderUsed).toBe('primary')
+  })
+
+  it('throws (does NOT swallow) when both providers fail with transient errors', async () => {
+    const throwFn = vi.fn().mockImplementation(() => {
+      const err = new Error('503') as Error & { status?: number }
+      err.status = 503
+      throw err
+    })
+    const primary = stubConnection()
+    ;(primary as unknown as { getParsedTokenAccountsByOwner: unknown }).getParsedTokenAccountsByOwner = throwFn
+    const fallback = stubConnection()
+    ;(fallback as unknown as { getParsedTokenAccountsByOwner: unknown }).getParsedTokenAccountsByOwner = throwFn
+    const service = new SolanaRpcService({ primary, fallback })
+
+    await expect(service.getTokenBalanceOrThrow(OWNER, MINT)).rejects.toThrow('503')
+  })
+})
+
 describe('solanaRpcService.getSolBalance', () => {
   it('returns lamports / LAMPORTS_PER_SOL via the primary connection', async () => {
     const primary = stubConnection()
