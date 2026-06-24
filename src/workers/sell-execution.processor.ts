@@ -60,6 +60,8 @@ export interface TransactionRepoSeam {
     projectFeatureId: string
     triggerTxSignature: string
     sellPercentage: number
+    /** Full SellJob payload, persisted so the recovery scanner (#41) can re-enqueue it. */
+    jobSnapshot: SellJobData
   }) => Promise<TransactionState>
   markFunded: (transactionId: string, fundingTxSignature: string) => Promise<void>
   markSwapped: (transactionId: string, sellTxSignature: string, solAmountReceived: string) => Promise<void>
@@ -280,6 +282,7 @@ export async function executeSellJob(
         projectFeatureId: job.featureId,
         triggerTxSignature: job.triggerSignature,
         sellPercentage: job.sellPercentage,
+        jobSnapshot: job,
       })
     }
     // 2. Resolve userId (needed for fee_ledger + every notification path)

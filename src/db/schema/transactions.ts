@@ -1,5 +1,6 @@
+import type { SellJobData } from '#root/queue/types.js'
 import { sql } from 'drizzle-orm'
-import { decimal, index, jsonb, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core'
+import { decimal, index, integer, jsonb, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core'
 import { featureTypeEnum, transactionStatusEnum } from './enums.js'
 import { projectFeatures } from './project-features.js'
 
@@ -21,6 +22,17 @@ export const transactions = pgTable('transactions', {
 
   status: transactionStatusEnum('status').notNull().default('pending'),
   errorDetails: jsonb('error_details'),
+
+  // Recovery support (ADR-0002 §4 / #41). The full SellJob payload is persisted
+  // at row creation so the recovery scanner can re-enqueue it without re-reading
+  // the WatchedFeatureCache (whose state may have drifted since the match).
+  jobSnapshot: jsonb('job_snapshot').$type<SellJobData>(),
+  // How many times the recovery scanner has re-enqueued this attempt. After
+  // MAX_RECOVERY_ATTEMPTS the row is marked terminally failed.
+  recoveryAttempts: integer('recovery_attempts').notNull().default(0),
+  // Bumped by the Sell Execution worker on every step transition; the recovery
+  // scanner only considers rows whose last attempt is older than the cooldown.
+  lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp('completed_at', { withTimezone: true }),

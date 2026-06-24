@@ -93,6 +93,9 @@ function createTransactionRepoSeam(): TransactionRepoSeam {
       return row ? toTransactionState(row) : undefined
     },
     async createTransaction(input) {
+      // job_snapshot + last_attempt_at feed the recovery scanner (#41): the
+      // snapshot is the source of truth for re-enqueue; last_attempt_at gates
+      // scan eligibility and is bumped on every step transition below.
       const [row] = await db
         .insert(transactions)
         .values({
@@ -101,6 +104,8 @@ function createTransactionRepoSeam(): TransactionRepoSeam {
           triggerTxSignature: input.triggerTxSignature,
           sellPercentage: input.sellPercentage.toFixed(2),
           status: 'pending',
+          jobSnapshot: input.jobSnapshot,
+          lastAttemptAt: new Date(),
         })
         .returning()
       return toTransactionState(row!)
@@ -108,13 +113,13 @@ function createTransactionRepoSeam(): TransactionRepoSeam {
     async markFunded(id, fundingTxSignature) {
       await db
         .update(transactions)
-        .set({ fundingTxSignature, status: 'funding' })
+        .set({ fundingTxSignature, status: 'funding', lastAttemptAt: new Date() })
         .where(eq(transactions.id, id))
     },
     async markSwapped(id, sellTxSignature, solAmountReceived) {
       await db
         .update(transactions)
-        .set({ sellTxSignature, solAmountReceived, status: 'swapping' })
+        .set({ sellTxSignature, solAmountReceived, status: 'swapping', lastAttemptAt: new Date() })
         .where(eq(transactions.id, id))
     },
     async markCompletedWithFee(input) {
@@ -125,6 +130,7 @@ function createTransactionRepoSeam(): TransactionRepoSeam {
             sweepTxSignature: input.sweepTxSignature,
             status: 'completed',
             completedAt: new Date(),
+            lastAttemptAt: new Date(),
           })
           .where(eq(transactions.id, input.transactionId))
         await tx.insert(feeLedger).values(input.fee)
@@ -133,13 +139,15 @@ function createTransactionRepoSeam(): TransactionRepoSeam {
     async markFailed(id, errorDetails) {
       await db
         .update(transactions)
-        .set({ status: 'failed', errorDetails: errorDetails as object, completedAt: new Date() })
+        .set({ status: 'failed', errorDetails: errorDetails as object, completedAt: new Date(), lastAttemptAt: new Date() })
         .where(eq(transactions.id, id))
     },
     async markRecoveryNeeded(id, errorDetails) {
+      // last_attempt_at is what the recovery scanner's cooldown filter keys on —
+      // stamping it here is what makes a stalled attempt eligible for re-enqueue.
       await db
         .update(transactions)
-        .set({ status: 'recovery_needed', errorDetails: errorDetails as object })
+        .set({ status: 'recovery_needed', errorDetails: errorDetails as object, lastAttemptAt: new Date() })
         .where(eq(transactions.id, id))
     },
   }

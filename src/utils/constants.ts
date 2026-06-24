@@ -82,6 +82,8 @@ export const MAX_PROJECTS_PER_USER = 3
 export const MAX_WHITELIST_ENTRIES = 25
 /** Max recovery attempts for an ephemeral wallet before marking failed */
 export const MAX_RECOVERY_ATTEMPTS = 5
+/** Max stuck transactions the recovery scanner re-enqueues per cycle */
+export const RECOVERY_SCAN_LIMIT = 100
 
 // ── SOL amounts (§15.7) ──────────────────────────────────────────────────
 /** SOL forwarded to each ephemeral wallet to cover gas + rent */

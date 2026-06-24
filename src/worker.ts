@@ -5,8 +5,8 @@
  * worker.ts — long-lived background process for Beru Bot.
  *
  * Owns the WatchedFeatureCache (T5.3b) and the BuyDetector (#37). Registers the
- * sell-execution (#40) and market-cap-monitor (#23) BullMQ workers; recovery and
- * fee-payout land in upcoming slices.
+ * sell-execution (#40), market-cap-monitor (#23), and recovery (#41) BullMQ
+ * workers; fee-payout lands in an upcoming slice.
  */
 
 import process from 'node:process'
@@ -31,6 +31,7 @@ import { SolanaRpcService } from '#root/services/solana-rpc.service.js'
 import { DexProgramId } from '#root/utils/dex-programs.js'
 import { logger } from '#root/utils/logger.js'
 import { registerMarketCapMonitorWorker } from '#root/workers/market-cap-monitor.worker.js'
+import { registerRecoveryWorker } from '#root/workers/recovery.worker.js'
 import { registerSellExecutionWorker } from '#root/workers/sell-execution.worker.js'
 
 const log = logger.child({ proc: 'worker' })
@@ -77,11 +78,17 @@ const marketCapMonitorWorker = registerMarketCapMonitorWorker({
   logger: log,
 })
 
+const recoveryWorker = registerRecoveryWorker({
+  connection: { url: config.redisUrl },
+  logger: log,
+})
+
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   log.info({ signal }, 'worker shutdown')
   await buyDetector.stop().catch(err => log.warn({ err }, 'BuyDetector stop failed'))
   await sellExecutionWorker.stop().catch(err => log.warn({ err }, 'sell-execution worker stop failed'))
   await marketCapMonitorWorker.stop().catch(err => log.warn({ err }, 'market-cap-monitor worker stop failed'))
+  await recoveryWorker.stop().catch(err => log.warn({ err }, 'recovery worker stop failed'))
   await subscriberRedis.quit().catch(err => log.warn({ err }, 'subscriber quit failed'))
   await closeDb().catch(err => log.warn({ err }, 'closeDb failed'))
 }
@@ -114,6 +121,10 @@ try {
   // of the BuyDetector — runs even when no WS URL is configured.
   await marketCapMonitorWorker.ensureScheduled()
   log.info('MarketCapMonitorWorker scheduled (hot 30s / cold 5min)')
+
+  // Recovery scanner — re-enqueues SellJobs for stuck transactions (#41).
+  await recoveryWorker.ensureScheduled()
+  log.info('RecoveryWorker scheduled (scan 5min)')
 }
 catch (err) {
   log.error({ err }, 'worker failed to start')
