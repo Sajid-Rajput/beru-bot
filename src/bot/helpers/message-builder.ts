@@ -642,7 +642,7 @@ export interface PinnedStatusData {
   totalSellCount: number
   totalSolReceived: string
   totalSoldAmount: string
-  state: 'watching' | 'stopped'
+  state: 'watching' | 'paused' | 'stopped'
 }
 
 export function buildPinnedStatusText(d: PinnedStatusData): string {
@@ -662,8 +662,17 @@ export function buildPinnedStatusText(d: PinnedStatusData): string {
     ].join('\n')
   }
 
+  // `paused` shares the active layout but swaps the header/footer so the user
+  // sees why buys aren't being watched. It returns to ACTIVE when MCAP recovers.
+  const header = d.state === 'paused'
+    ? '🌑 SHADOW SELL — ⏸️ PAUSED'
+    : '🌑 SHADOW SELL — ACTIVE ⚡'
+  const footer = d.state === 'paused'
+    ? '⏸️ Paused — MCAP below threshold. Resumes automatically.'
+    : '⏳ Watching for buys...'
+
   return [
-    '🌑 SHADOW SELL — ACTIVE ⚡',
+    header,
     '',
     `${escapeHtml(d.tokenName)} (${escapeHtml(d.tokenSymbol)})`,
     `📋 <code>${d.tokenMint}</code>`,
@@ -675,7 +684,7 @@ export function buildPinnedStatusText(d: PinnedStatusData): string {
     '',
     `⚙️ Min/Max: ${d.config.minSellPercentage}-${d.config.maxSellPercentage}% | MCAP: ${mcap} | Buy: ${d.config.minBuyAmountSol}`,
     '',
-    '⏳ Watching for buys...',
+    footer,
   ].join('\n')
 }
 

@@ -4,9 +4,9 @@
 /**
  * worker.ts — long-lived background process for Beru Bot.
  *
- * Owns the WatchedFeatureCache (T5.3b) and the BuyDetector (#37). BullMQ
- * workers (sell-execution, market-cap-monitor, recovery, fee-payout) land in
- * the upcoming slices.
+ * Owns the WatchedFeatureCache (T5.3b) and the BuyDetector (#37). Registers the
+ * sell-execution (#40) and market-cap-monitor (#23) BullMQ workers; recovery and
+ * fee-payout land in upcoming slices.
  */
 
 import process from 'node:process'
@@ -30,6 +30,7 @@ import { createRedisClient, redis } from '#root/queue/redis.js'
 import { SolanaRpcService } from '#root/services/solana-rpc.service.js'
 import { DexProgramId } from '#root/utils/dex-programs.js'
 import { logger } from '#root/utils/logger.js'
+import { registerMarketCapMonitorWorker } from '#root/workers/market-cap-monitor.worker.js'
 import { registerSellExecutionWorker } from '#root/workers/sell-execution.worker.js'
 
 const log = logger.child({ proc: 'worker' })
@@ -70,10 +71,17 @@ const sellExecutionWorker = registerSellExecutionWorker({
   logger: log,
 })
 
+const marketCapMonitorWorker = registerMarketCapMonitorWorker({
+  connection: { url: config.redisUrl },
+  redis,
+  logger: log,
+})
+
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   log.info({ signal }, 'worker shutdown')
   await buyDetector.stop().catch(err => log.warn({ err }, 'BuyDetector stop failed'))
   await sellExecutionWorker.stop().catch(err => log.warn({ err }, 'sell-execution worker stop failed'))
+  await marketCapMonitorWorker.stop().catch(err => log.warn({ err }, 'market-cap-monitor worker stop failed'))
   await subscriberRedis.quit().catch(err => log.warn({ err }, 'subscriber quit failed'))
   await closeDb().catch(err => log.warn({ err }, 'closeDb failed'))
 }
@@ -101,6 +109,11 @@ try {
       subscriptions: buyDetector.getStatus().subscriptions,
     }, 'BuyDetector started')
   }
+
+  // Register the repeatable hot (30s) + cold (5min) monitor jobs. Independent
+  // of the BuyDetector — runs even when no WS URL is configured.
+  await marketCapMonitorWorker.ensureScheduled()
+  log.info('MarketCapMonitorWorker scheduled (hot 30s / cold 5min)')
 }
 catch (err) {
   log.error({ err }, 'worker failed to start')
