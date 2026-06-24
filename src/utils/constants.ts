@@ -8,6 +8,10 @@ export const QUEUE_RECOVERY = 'recovery'
 export const QUEUE_FEE_PAYOUT = 'fee-payout'
 export const QUEUE_NOTIFICATION = 'notification-queue'
 
+// ── BullMQ job-scheduler ids ──────────────────────────────────────────────
+/** Weekly referral fee payout cron — Sunday at REFERRAL_PAYOUT_CRON_HOUR UTC */
+export const FEE_PAYOUT_SCHEDULER_ID = 'fee-payout-weekly'
+
 // ── Solana ────────────────────────────────────────────────────────────────
 export const SOLANA_COMMITMENT = 'confirmed' as const
 /** Mirrors `@solana/web3.js` LAMPORTS_PER_SOL — defined locally to avoid importing the full SDK */

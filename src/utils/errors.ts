@@ -85,3 +85,17 @@ export class JupiterError extends BeruError {
     this.name = 'JupiterError'
   }
 }
+
+/**
+ * Thrown by the fee-payout transfer seam when a SOL transfer was *definitely
+ * not broadcast* to the cluster (blockhash fetch, signing, or the send call
+ * itself was rejected before the tx left the process). Distinguishes "no money
+ * moved — safe to fail and roll over" from a post-broadcast confirmation
+ * timeout, where the tx may have landed and must NOT be auto-re-paid (#21).
+ */
+export class TransferNotBroadcastError extends BeruError {
+  constructor(message: string, cause?: unknown) {
+    super(message, 'TRANSFER_NOT_BROADCAST_ERROR', cause)
+    this.name = 'TransferNotBroadcastError'
+  }
+}

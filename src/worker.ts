@@ -5,8 +5,8 @@
  * worker.ts — long-lived background process for Beru Bot.
  *
  * Owns the WatchedFeatureCache (T5.3b) and the BuyDetector (#37). Registers the
- * sell-execution (#40), market-cap-monitor (#23), and recovery (#41) BullMQ
- * workers; fee-payout lands in an upcoming slice.
+ * sell-execution (#40), market-cap-monitor (#23), recovery (#41), and
+ * fee-payout (#21) BullMQ workers.
  */
 
 import process from 'node:process'
@@ -30,6 +30,7 @@ import { createRedisClient, redis } from '#root/queue/redis.js'
 import { SolanaRpcService } from '#root/services/solana-rpc.service.js'
 import { DexProgramId } from '#root/utils/dex-programs.js'
 import { logger } from '#root/utils/logger.js'
+import { registerFeePayoutWorker } from '#root/workers/fee-payout.worker.js'
 import { registerMarketCapMonitorWorker } from '#root/workers/market-cap-monitor.worker.js'
 import { registerRecoveryWorker } from '#root/workers/recovery.worker.js'
 import { registerSellExecutionWorker } from '#root/workers/sell-execution.worker.js'
@@ -83,12 +84,19 @@ const recoveryWorker = registerRecoveryWorker({
   logger: log,
 })
 
+const feePayoutWorker = registerFeePayoutWorker({
+  connection: { url: config.redisUrl },
+  rpc,
+  logger: log,
+})
+
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   log.info({ signal }, 'worker shutdown')
   await buyDetector.stop().catch(err => log.warn({ err }, 'BuyDetector stop failed'))
   await sellExecutionWorker.stop().catch(err => log.warn({ err }, 'sell-execution worker stop failed'))
   await marketCapMonitorWorker.stop().catch(err => log.warn({ err }, 'market-cap-monitor worker stop failed'))
   await recoveryWorker.stop().catch(err => log.warn({ err }, 'recovery worker stop failed'))
+  await feePayoutWorker.stop().catch(err => log.warn({ err }, 'fee-payout worker stop failed'))
   await subscriberRedis.quit().catch(err => log.warn({ err }, 'subscriber quit failed'))
   await closeDb().catch(err => log.warn({ err }, 'closeDb failed'))
 }
@@ -125,6 +133,10 @@ try {
   // Recovery scanner — re-enqueues SellJobs for stuck transactions (#41).
   await recoveryWorker.ensureScheduled()
   log.info('RecoveryWorker scheduled (scan 5min)')
+
+  // Weekly referral fee payout — Sunday at REFERRAL_PAYOUT_CRON_HOUR UTC (#21).
+  await feePayoutWorker.ensureScheduled()
+  log.info('FeePayoutWorker scheduled (weekly Sunday)')
 }
 catch (err) {
   log.error({ err }, 'worker failed to start')

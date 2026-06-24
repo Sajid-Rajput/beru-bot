@@ -28,6 +28,7 @@ const baseConfigSchema = v.object({
   solanaFallbackRpcUrl: v.optional(v.string(), ''),
   solanaPublicRpcUrl: v.optional(v.string(), 'https://api.mainnet-beta.solana.com'),
   platformFeeWallet: v.optional(v.string(), ''),
+  platformFeeWalletPrivateKey: v.optional(v.string(), ''),
   platformFeePercentage: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.01'),
 
   // ── Referral ──────────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ const baseConfigSchema = v.object({
   referralTier2Pct: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.05'),
   referralUserDiscountPct: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.10'),
   referralMinPayoutSol: v.optional(v.pipe(v.string(), v.transform(Number), v.number()), '0.01'),
+  referralPayoutCronHour: v.optional(v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(0), v.maxValue(23)), '8'),
   referralLinkFormat: v.optional(v.string(), 'https://t.me/BeruMonarchBot?start=ref_{telegramId}'),
 
   // ── Community & Pre-Launch ────────────────────────────────────────────────
