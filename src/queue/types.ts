@@ -105,6 +105,33 @@ export type NotificationJob =
     }
   }
   | {
+    /**
+     * A Project Feature changed watch state (MarketCapMonitorWorker, issue #23).
+     * Fat payload (ADR-0002 N-2): carries everything the consumer needs to both
+     * re-render the pinned status message and fire a transient state alert with
+     * zero DB reads. `pinnedMessageId` is null when no pinned message exists.
+     */
+    userId: string
+    kind: 'feature.state'
+    context: {
+      newState: 'watching' | 'paused'
+      pinnedMessageId: number | null
+      projectId: string
+      tokenName: string
+      tokenSymbol: string
+      tokenMint: string
+      config: {
+        minSellPercentage: number
+        maxSellPercentage: number
+        targetMarketCapUsd: number
+        minBuyAmountSol: number
+      }
+      totalSellCount: number
+      totalSolReceived: string
+      totalSoldAmount: string
+    }
+  }
+  | {
     userId: string
     kind: 'admin.alert'
     context: {

@@ -48,6 +48,8 @@ export const BULLMQ_SELL_RATE_MAX = 10
 // ── Redis TTLs / timings (§15.7) ─────────────────────────────────────────
 /** Per-feature sell mutex TTL — must exceed max pipeline duration (seconds) */
 export const SELL_LOCK_TTL = 60
+/** Single-flight lock TTL for the market-cap monitor (seconds, invariant 17) */
+export const MONITOR_LOCK_TTL = 60
 /** Webhook payload deduplication window (seconds) */
 export const DEDUP_TTL = 300
 /** Replay-protection window: reject webhooks older than this (seconds) */
@@ -56,8 +58,10 @@ export const WEBHOOK_TIMESTAMP_TOLERANCE = 30
 export const NONCE_TTL = 60
 
 // ── Polling / intervals in milliseconds (§15.7) ───────────────────────────
-/** DexScreener MCAP poll cycle (ms) */
+/** DexScreener MCAP poll cycle — monitor hot loop (ms) */
 export const MCAP_POLL_INTERVAL = 30_000
+/** Monitor cold loop — re-broadcast watched set as a pub/sub-loss safety net (ms) */
+export const MONITOR_COLD_INTERVAL = 300_000
 /** Recovery worker cycle (ms) */
 export const RECOVERY_INTERVAL = 300_000
 /** Watched-token cache rebuild safety net (ms) */
@@ -98,4 +102,5 @@ export const redisKeys = {
     `debounce:${telegramId}:${callbackData}`,
   fileCache: () => 'bot:file_cache',
   waitlistCount: () => 'waitlist:count',
+  monitorLock: () => 'monitor:lock',
 } as const

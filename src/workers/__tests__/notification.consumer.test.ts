@@ -8,6 +8,28 @@ import {
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+type FeatureStateContext = Extract<NotificationJob, { kind: 'feature.state' }>['context']
+
+function makeFeatureStateJob(overrides: Partial<FeatureStateContext> = {}): NotificationJob {
+  return {
+    userId: '42',
+    kind: 'feature.state',
+    context: {
+      newState: 'paused',
+      pinnedMessageId: 999,
+      projectId: 'proj-1',
+      tokenName: 'Bonk',
+      tokenSymbol: 'BONK',
+      tokenMint: 'So11111111111111111111111111111111111111112',
+      config: { minSellPercentage: 10, maxSellPercentage: 50, targetMarketCapUsd: 100_000, minBuyAmountSol: 1 },
+      totalSellCount: 3,
+      totalSolReceived: '1.5',
+      totalSoldAmount: '2.0',
+      ...overrides,
+    },
+  }
+}
+
 describe('renderNotification', () => {
   it('sell.completed renders amount, symbol, and SOL received', () => {
     const job: NotificationJob = {
@@ -110,14 +132,25 @@ describe('renderNotification', () => {
     expect(text).toContain('high')
     expect(text).toContain('RPC fallback engaged')
   })
+
+  it('feature.state announces WATCHING when newState is watching', () => {
+    const { text } = renderNotification(makeFeatureStateJob({ newState: 'watching' }))
+    expect(text.toUpperCase()).toContain('WATCHING')
+  })
+
+  it('feature.state announces paused when newState is paused', () => {
+    const { text } = renderNotification(makeFeatureStateJob({ newState: 'paused' }))
+    expect(text.toLowerCase()).toContain('paused')
+  })
 })
 
 describe('createNotificationProcessor', () => {
   function setup() {
     const sendMessage = vi.fn().mockResolvedValue({ messageId: 777 })
     const scheduleDelete = vi.fn()
-    const processor = createNotificationProcessor({ sendMessage, scheduleDelete })
-    return { sendMessage, scheduleDelete, processor }
+    const editMessage = vi.fn().mockResolvedValue(undefined)
+    const processor = createNotificationProcessor({ sendMessage, scheduleDelete, editMessage })
+    return { sendMessage, scheduleDelete, editMessage, processor }
   }
 
   it('sends the rendered text to chatId = Number(userId)', async () => {
@@ -168,6 +201,32 @@ describe('createNotificationProcessor', () => {
 
     expect(scheduleDelete).not.toHaveBeenCalled()
   })
+
+  it('feature.state edits the pinned message in place AND fires a transient alert', async () => {
+    const { sendMessage, scheduleDelete, editMessage, processor } = setup()
+    sendMessage.mockResolvedValueOnce({ messageId: 2002 })
+
+    await processor(makeFeatureStateJob({ newState: 'paused', pinnedMessageId: 999 }))
+
+    // Pinned status message is edited in place with the re-rendered (paused) body.
+    expect(editMessage).toHaveBeenCalledTimes(1)
+    const [chatId, messageId, pinnedText] = editMessage.mock.calls[0]
+    expect(chatId).toBe(42)
+    expect(messageId).toBe(999)
+    expect(pinnedText).toContain('PAUSED')
+    // A transient alert is also sent and scheduled for auto-delete.
+    expect(sendMessage).toHaveBeenCalledTimes(1)
+    expect(scheduleDelete).toHaveBeenCalledWith(42, 2002, AUTO_DELETE_TTL_MS['feature.state'])
+  })
+
+  it('feature.state with no pinned message skips the edit but still alerts', async () => {
+    const { sendMessage, editMessage, processor } = setup()
+
+    await processor(makeFeatureStateJob({ pinnedMessageId: null }))
+
+    expect(editMessage).not.toHaveBeenCalled()
+    expect(sendMessage).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('createNotificationConsumer', () => {
@@ -177,8 +236,9 @@ describe('createNotificationConsumer', () => {
   function setup() {
     const sendMessage = vi.fn().mockResolvedValue({ messageId: 1001 })
     const deleteMessage = vi.fn().mockResolvedValue(undefined)
-    const consumer = createNotificationConsumer({ sendMessage, deleteMessage })
-    return { sendMessage, deleteMessage, consumer }
+    const editMessage = vi.fn().mockResolvedValue(undefined)
+    const consumer = createNotificationConsumer({ sendMessage, deleteMessage, editMessage })
+    return { sendMessage, deleteMessage, editMessage, consumer }
   }
 
   const sellCompletedJob: NotificationJob = {
@@ -221,6 +281,7 @@ describe('aUTO_DELETE_TTL_MS', () => {
       'sell.failed': 45_000,
       'sell.recovered': 30_000,
       'state.alert': 30_000,
+      'feature.state': 30_000,
       'payout.sent': null,
       'admin.alert': null,
     })

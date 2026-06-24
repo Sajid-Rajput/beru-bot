@@ -2,6 +2,7 @@ import type { NotificationJob, NotificationKind } from '#root/queue/types.js'
 import type { Logger } from '#root/utils/logger.js'
 import type { ConnectionOptions } from 'bullmq'
 import type { Api, RawApi } from 'grammy'
+import { buildPinnedStatusText } from '#root/bot/helpers/message-builder.js'
 import { QUEUE_NOTIFICATION } from '#root/utils/constants.js'
 import { Worker } from 'bullmq'
 
@@ -14,6 +15,7 @@ export const AUTO_DELETE_TTL_MS: Record<NotificationKind, number | null> = {
   'sell.failed': 45_000,
   'sell.recovered': 30_000,
   'state.alert': 30_000,
+  'feature.state': 30_000,
   'payout.sent': null,
   'admin.alert': null,
 }
@@ -43,6 +45,13 @@ export function renderNotification(job: NotificationJob): { text: string } {
     case 'state.alert': {
       return { text: `⚡ ${job.context.message}` }
     }
+    case 'feature.state': {
+      return {
+        text: job.context.newState === 'watching'
+          ? '⚡ Shadow Sell is now WATCHING for buys'
+          : '⏸️ Shadow Sell paused — MCAP below threshold',
+      }
+    }
     case 'admin.alert': {
       const { severity, message } = job.context
       return { text: `🚨 <b>[${severity}]</b> ${message}` }
@@ -57,11 +66,33 @@ export function renderNotification(job: NotificationJob): { text: string } {
 export interface NotificationProcessorDeps {
   sendMessage: (chatId: number, text: string) => Promise<{ messageId: number }>
   scheduleDelete: (chatId: number, messageId: number, ttlMs: number) => void
+  /** Edits a message in place — used to re-render the pinned status message. */
+  editMessage: (chatId: number, messageId: number, text: string) => Promise<void>
 }
 
 export function createNotificationProcessor(deps: NotificationProcessorDeps) {
   return async function processNotification(job: NotificationJob): Promise<void> {
     const chatId = Number(job.userId)
+
+    // feature.* events both re-render the persistent pinned status message AND
+    // fire a transient alert (ARCHITECTURE §6.8). The pinned edit happens first
+    // so the durable status is correct even if the transient send fails.
+    if (job.kind === 'feature.state') {
+      const c = job.context
+      if (c.pinnedMessageId !== null) {
+        await deps.editMessage(chatId, c.pinnedMessageId, buildPinnedStatusText({
+          tokenName: c.tokenName,
+          tokenSymbol: c.tokenSymbol,
+          tokenMint: c.tokenMint,
+          config: c.config,
+          totalSellCount: c.totalSellCount,
+          totalSolReceived: c.totalSolReceived,
+          totalSoldAmount: c.totalSoldAmount,
+          state: c.newState,
+        }))
+      }
+    }
+
     const { text } = renderNotification(job)
     const { messageId } = await deps.sendMessage(chatId, text)
     const ttl = AUTO_DELETE_TTL_MS[job.kind]
@@ -73,6 +104,7 @@ export function createNotificationProcessor(deps: NotificationProcessorDeps) {
 export interface NotificationConsumerDeps {
   sendMessage: (chatId: number, text: string) => Promise<{ messageId: number }>
   deleteMessage: (chatId: number, messageId: number) => Promise<void>
+  editMessage: (chatId: number, messageId: number, text: string) => Promise<void>
 }
 
 export interface NotificationConsumer {
@@ -95,6 +127,7 @@ export function createNotificationConsumer(deps: NotificationConsumerDeps): Noti
 
   const processor = createNotificationProcessor({
     sendMessage: deps.sendMessage,
+    editMessage: deps.editMessage,
     scheduleDelete: (chatId, messageId, ttlMs) => {
       const k = key(chatId, messageId)
       const timer = setTimeout(() => {
@@ -151,6 +184,17 @@ export function registerNotificationWorker(
         // it manually. Log but don't propagate; this fires from a setTimeout
         // and there's no caller to surface the error to.
         log.warn({ err, chatId, messageId }, 'auto-delete failed')
+      }
+    },
+    editMessage: async (chatId, messageId, text) => {
+      try {
+        await bot.api.editMessageText(chatId, messageId, text, { parse_mode: 'HTML' })
+      }
+      catch (err) {
+        // 400 "message is not modified" / "message to edit not found" are benign
+        // (user un-pinned or deleted the status message). Don't fail the job —
+        // the transient alert still informs the user of the state change.
+        log.warn({ err, chatId, messageId }, 'pinned status edit failed')
       }
     },
   })

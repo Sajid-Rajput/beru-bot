@@ -33,7 +33,7 @@ describe('notification-queue contract (ADR-0002 N-2)', () => {
       }
     })
 
-    it('closes the union at exactly the six kinds from ADR-0002 N-2', () => {
+    it('closes the union at exactly the seven kinds (ADR-0002 N-2 + feature.state, issue #23)', () => {
       // An exhaustive switch — the `never` assignment is the lock. If any
       // kind is added or removed, this stops compiling, forcing a deliberate
       // contract update rather than a silent drift.
@@ -44,6 +44,7 @@ describe('notification-queue contract (ADR-0002 N-2)', () => {
           case 'sell.recovered':
           case 'payout.sent':
           case 'state.alert':
+          case 'feature.state':
           case 'admin.alert':
             return job.kind
           default: {
