@@ -16,7 +16,7 @@ import {
   createSolanaWsClientFactory,
 } from '#root/buy-detector/buy-detector.adapter.js'
 import { BuyDetector } from '#root/buy-detector/index.js'
-import { parseBuy as parsePumpFunBuy } from '#root/buy-detector/parsers/pump-fun-bc.parser.js'
+import { MVP_PARSERS, MVP_PROGRAMS } from '#root/buy-detector/parsers/mvp.js'
 import {
   createWatchedFeatureFetcher,
   createWatchedFeatureLoader,
@@ -28,7 +28,6 @@ import { closeDb, db } from '#root/db/index.js'
 import { sellExecutionQueue } from '#root/queue/queues.js'
 import { createRedisClient, redis } from '#root/queue/redis.js'
 import { SolanaRpcService } from '#root/services/solana-rpc.service.js'
-import { DexProgramId } from '#root/utils/dex-programs.js'
 import { logger } from '#root/utils/logger.js'
 import { registerFeePayoutWorker } from '#root/workers/fee-payout.worker.js'
 import { registerMarketCapMonitorWorker } from '#root/workers/market-cap-monitor.worker.js'
@@ -51,8 +50,8 @@ const rpc = new SolanaRpcService()
 
 const buyDetector = new BuyDetector({
   cache: watchedFeatureCache,
-  parsers: [[DexProgramId.PUMP_FUN_BC, parsePumpFunBuy]],
-  programs: [DexProgramId.PUMP_FUN_BC],
+  parsers: MVP_PARSERS,
+  programs: MVP_PROGRAMS,
   wsClientFactory: createSolanaWsClientFactory(),
   wsUrl: config.solanaPrimaryWsUrl,
   fetchTx: createFetchParsedTransaction(rpc),

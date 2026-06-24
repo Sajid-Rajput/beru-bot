@@ -42,33 +42,30 @@ function makeCache(initial: ProjectFeatureConfig[] = []): WatchedFeatureCache {
   })
 }
 
-interface FakeWs {
-  emit: (logs: Logs) => void
-  closeCalls: number
-}
-
+// Keeps one listener per subscribed on-chain program id, so a test can emit on
+// a specific DEX subscription and assert per-program routing. `emit` is keyed
+// by the on-chain program string the SubscriptionManager subscribes with
+// (`DEX_PROGRAM_IDS[program]`), mirroring the subscription-manager test fake.
 function makeWsFactory() {
-  let current: FakeWs | null = null
-  const factory = () => {
-    const state = { closeCalls: 0 } as FakeWs
-    let listener: ((logs: Logs) => void) | null = null
-    state.emit = (logs) => {
-      listener?.(logs)
-    }
-    current = state
-    return {
-      subscribeLogs: async (_pid: string, onLogs: (logs: Logs) => void) => {
-        listener = onLogs
-        return {
-          close: async () => {
-            state.closeCalls += 1
-            listener = null
-          },
-        }
-      },
-    }
+  const listeners = new Map<string, (logs: Logs) => void>()
+  let closeCalls = 0
+  const factory = () => ({
+    subscribeLogs: async (programId: string, onLogs: (logs: Logs) => void) => {
+      listeners.set(programId, onLogs)
+      return {
+        close: async () => {
+          closeCalls += 1
+          listeners.delete(programId)
+        },
+      }
+    },
+  })
+  return {
+    factory,
+    emit: (programId: string, logs: Logs) => listeners.get(programId)?.(logs),
+    closeCalls: () => closeCalls,
+    subscribedPrograms: () => [...listeners.keys()],
   }
-  return { factory, ws: () => current! }
 }
 
 function makeFakeQueue() {
@@ -93,12 +90,23 @@ function makeFakeRedis() {
 
 const STUB_PARSED_TX = { meta: {}, slot: 1, transaction: {} } as unknown as ParsedTransactionWithMeta
 
+function makeBuy(dexProgram: DexProgramId, signature: string) {
+  return {
+    signature,
+    mint: MINT_WATCHED,
+    buyer: 'BuyerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    solIn: BigInt(3 * LAMPORTS_PER_SOL),
+    slot: 1,
+    dexProgram,
+  }
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('buyDetector', () => {
   it('drops a log notification silently when no watched mint is mentioned', async () => {
     const cache = makeCache([makeFeature()]) // watched: MINT_WATCHED
-    const { factory, ws } = makeWsFactory()
+    const { factory, emit } = makeWsFactory()
     const queue = makeFakeQueue()
     const fetchTx = vi.fn()
 
@@ -114,7 +122,7 @@ describe('buyDetector', () => {
     })
 
     await bd.start()
-    ws().emit({
+    emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_FUN_BC], {
       err: null,
       logs: [`Program log: bought ${MINT_UNKNOWN}`],
       signature: 'sig-other',
@@ -130,7 +138,7 @@ describe('buyDetector', () => {
 
   it('on a watched-mint log: fetches tx, parses, matches, and enqueues a SellJob', async () => {
     const cache = makeCache([makeFeature()])
-    const { factory, ws } = makeWsFactory()
+    const { factory, emit } = makeWsFactory()
     const queue = makeFakeQueue()
 
     const fetchTx = vi.fn().mockResolvedValue(STUB_PARSED_TX)
@@ -155,7 +163,7 @@ describe('buyDetector', () => {
     })
 
     await bd.start()
-    ws().emit({
+    emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_FUN_BC], {
       err: null,
       logs: [`Program log: contains ${MINT_WATCHED} reference`],
       signature: 'sig-buy',
@@ -181,7 +189,7 @@ describe('buyDetector', () => {
 
   it('drops silently when the parser returns null (not a buy)', async () => {
     const cache = makeCache([makeFeature()])
-    const { factory, ws } = makeWsFactory()
+    const { factory, emit } = makeWsFactory()
     const queue = makeFakeQueue()
     const fetchTx = vi.fn().mockResolvedValue(STUB_PARSED_TX)
     const parser = vi.fn().mockReturnValue(null)
@@ -198,7 +206,7 @@ describe('buyDetector', () => {
     })
 
     await bd.start()
-    ws().emit({
+    emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_FUN_BC], {
       err: null,
       logs: [`Program log: ${MINT_WATCHED}`],
       signature: 'sig-not-buy',
@@ -238,7 +246,7 @@ describe('buyDetector', () => {
   it('stop() closes WS subscriptions and stops the cache', async () => {
     const cache = makeCache([])
     const stopSpy = vi.spyOn(cache, 'stop')
-    const { factory, ws } = makeWsFactory()
+    const { factory, closeCalls } = makeWsFactory()
 
     const bd = new BuyDetector({
       cache,
@@ -254,8 +262,131 @@ describe('buyDetector', () => {
     await bd.start()
     await bd.stop()
 
-    expect(ws().closeCalls).toBe(1)
+    expect(closeCalls()).toBe(1)
     expect(stopSpy).toHaveBeenCalled()
+  })
+
+  // ── Multi-DEX routing (#38) ──────────────────────────────────────────────
+
+  function makeThreeDexDetector(deps: {
+    parsers: { pumpFun: any, pumpSwap: any, raydium: any }
+    factory: any
+    queue: ReturnType<typeof makeFakeQueue>
+  }) {
+    return new BuyDetector({
+      cache: makeCache([makeFeature()]),
+      parsers: [
+        [DexProgramId.PUMP_FUN_BC, deps.parsers.pumpFun],
+        [DexProgramId.PUMP_SWAP, deps.parsers.pumpSwap],
+        [DexProgramId.RAYDIUM_AMM_V4, deps.parsers.raydium],
+      ],
+      programs: [DexProgramId.PUMP_FUN_BC, DexProgramId.PUMP_SWAP, DexProgramId.RAYDIUM_AMM_V4],
+      wsClientFactory: deps.factory,
+      wsUrl: 'wss://x',
+      fetchTx: vi.fn().mockResolvedValue(STUB_PARSED_TX),
+      redis: makeFakeRedis(),
+      sellQueue: deps.queue,
+    })
+  }
+
+  it('routes a PumpSwap-subscription log to the PumpSwap parser only, then enqueues a SellJob', async () => {
+    const { factory, emit } = makeWsFactory()
+    const queue = makeFakeQueue()
+    const parsers = {
+      pumpFun: vi.fn().mockReturnValue(null),
+      pumpSwap: vi.fn().mockReturnValue(makeBuy(DexProgramId.PUMP_SWAP, 'sig-ps')),
+      raydium: vi.fn().mockReturnValue(null),
+    }
+    const bd = makeThreeDexDetector({ parsers, factory, queue })
+
+    await bd.start()
+    emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_SWAP], {
+      err: null,
+      logs: [`Program log: ${MINT_WATCHED}`],
+      signature: 'sig-ps',
+    })
+
+    await vi.waitFor(() => expect(queue.added).toHaveLength(1))
+    expect(parsers.pumpSwap).toHaveBeenCalled()
+    expect(parsers.pumpFun).not.toHaveBeenCalled()
+    expect(parsers.raydium).not.toHaveBeenCalled()
+    expect(queue.added[0]).toMatchObject({ triggerSignature: 'sig-ps', mint: MINT_WATCHED })
+
+    await bd.stop()
+  })
+
+  it('routes a Raydium AMM v4-subscription log to the Raydium parser only, then enqueues a SellJob', async () => {
+    const { factory, emit } = makeWsFactory()
+    const queue = makeFakeQueue()
+    const parsers = {
+      pumpFun: vi.fn().mockReturnValue(null),
+      pumpSwap: vi.fn().mockReturnValue(null),
+      raydium: vi.fn().mockReturnValue(makeBuy(DexProgramId.RAYDIUM_AMM_V4, 'sig-ray')),
+    }
+    const bd = makeThreeDexDetector({ parsers, factory, queue })
+
+    await bd.start()
+    emit(DEX_PROGRAM_IDS[DexProgramId.RAYDIUM_AMM_V4], {
+      err: null,
+      logs: [`Program log: ${MINT_WATCHED}`],
+      signature: 'sig-ray',
+    })
+
+    await vi.waitFor(() => expect(queue.added).toHaveLength(1))
+    expect(parsers.raydium).toHaveBeenCalled()
+    expect(parsers.pumpFun).not.toHaveBeenCalled()
+    expect(parsers.pumpSwap).not.toHaveBeenCalled()
+    expect(queue.added[0]).toMatchObject({ triggerSignature: 'sig-ray', mint: MINT_WATCHED })
+
+    await bd.stop()
+  })
+
+  it('getStatus() lists all three DEX subscriptions with an independent lastLogAtMs per program', async () => {
+    let clock = 1_000
+    const cache = makeCache([])
+    const { factory, emit } = makeWsFactory()
+    const bd = new BuyDetector({
+      cache,
+      parsers: [
+        [DexProgramId.PUMP_FUN_BC, () => null],
+        [DexProgramId.PUMP_SWAP, () => null],
+        [DexProgramId.RAYDIUM_AMM_V4, () => null],
+      ],
+      programs: [DexProgramId.PUMP_FUN_BC, DexProgramId.PUMP_SWAP, DexProgramId.RAYDIUM_AMM_V4],
+      wsClientFactory: factory,
+      wsUrl: 'wss://x',
+      fetchTx: async () => null,
+      redis: makeFakeRedis(),
+      sellQueue: makeFakeQueue(),
+      now: () => clock,
+    })
+
+    await bd.start()
+    expect(bd.getStatus().subscriptions).toEqual([
+      DexProgramId.PUMP_FUN_BC,
+      DexProgramId.PUMP_SWAP,
+      DexProgramId.RAYDIUM_AMM_V4,
+    ])
+    expect(bd.getStatus().lastLogAtMs).toEqual({
+      [DexProgramId.PUMP_FUN_BC]: null,
+      [DexProgramId.PUMP_SWAP]: null,
+      [DexProgramId.RAYDIUM_AMM_V4]: null,
+    })
+
+    clock = 5_000
+    emit(DEX_PROGRAM_IDS[DexProgramId.RAYDIUM_AMM_V4], {
+      err: null,
+      logs: [],
+      signature: 'sig-heartbeat',
+    })
+
+    expect(bd.getStatus().lastLogAtMs).toEqual({
+      [DexProgramId.PUMP_FUN_BC]: null,
+      [DexProgramId.PUMP_SWAP]: null,
+      [DexProgramId.RAYDIUM_AMM_V4]: 5_000,
+    })
+
+    await bd.stop()
   })
 
   // Touch DEX_PROGRAM_IDS so the linter knows the helper is used at runtime
