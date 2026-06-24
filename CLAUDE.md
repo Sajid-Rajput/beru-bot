@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Beru Bot — Shadow Sell v2.** A Telegram bot for Solana token automation, built on grammY + Hono + BullMQ + Drizzle/Postgres. The same source tree runs as **two long-lived Node processes**:
 
 - `src/main.ts` — the grammY bot. Picks polling vs. webhook based on `BOT_MODE`; webhook mode also starts the Hono HTTP server.
-- `src/worker.ts` — the BullMQ worker process. Owns the `WatchedFeatureCache` and the `BuyDetector` (Pump.fun only so far, #37) and registers the **sell-execution** (#40), **market-cap-monitor** (#23), and **recovery** (#41) workers. The **fee-payout** worker in `src/workers/` is still a stub, not yet registered. The **notification** consumer runs in the *bot* process — `main.ts` registers it (#42), not `worker.ts`.
+- `src/worker.ts` — the BullMQ worker process. Owns the `WatchedFeatureCache` and the `BuyDetector` (Pump.fun only so far, #37) and registers the **sell-execution** (#40), **market-cap-monitor** (#23), **recovery** (#41), and **fee-payout** (#21, weekly Sunday cron) workers. The **notification** consumer runs in the *bot* process — `main.ts` registers it (#42), not `worker.ts`.
 
 `src/app.ts` is a stub from earlier planning — `main.ts` is the real entry point.
 
