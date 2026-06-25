@@ -12,10 +12,18 @@ import { Connection, PublicKey } from '@solana/web3.js'
  * auto-reconnects the socket and silently resumes delivering logs, so the
  * degraded-mode heartbeat (#39) treats the first log after a silence window as
  * the fold-back signal rather than observing a reconnect event here.
+ *
+ * `SOLANA_PRIMARY_WS_URL` is a `wss://` endpoint, but web3.js requires the
+ * `Connection` endpoint to be `http(s)` and throws otherwise — so the WSS url is
+ * passed via `wsEndpoint` and an `http(s)` endpoint is derived for the (unused
+ * here) RPC side.
  */
 export function createSolanaWsClientFactory(): WsClientFactory {
   return (url: string): WsClient => {
-    const connection = new Connection(url, 'confirmed')
+    const httpEndpoint = url.startsWith('ws')
+      ? url.replace(/^ws/, 'http') // wss://→https://, ws://→http://
+      : url
+    const connection = new Connection(httpEndpoint, { wsEndpoint: url, commitment: 'confirmed' })
     return {
       async subscribeLogs(programId, onLogs): Promise<WsLogsSubscription> {
         const programKey = new PublicKey(programId)
