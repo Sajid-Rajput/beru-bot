@@ -22,6 +22,8 @@ export interface SellQueue {
  */
 export interface MetricsRecorder {
   observeDetectionToEnqueueMs: (ms: number) => void
+  /** Sets the `buy-detector.mode` gauge on each primary↔degraded transition (#39). */
+  setMode?: (mode: 'primary' | 'degraded' | 'stopped') => void
 }
 
 export interface EnqueuerDeps {

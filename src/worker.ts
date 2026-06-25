@@ -13,6 +13,7 @@ import process from 'node:process'
 
 import {
   createFetchParsedTransaction,
+  createFetchSignaturesForMint,
   createSolanaWsClientFactory,
 } from '#root/buy-detector/buy-detector.adapter.js'
 import { BuyDetector } from '#root/buy-detector/index.js'
@@ -55,6 +56,13 @@ const buyDetector = new BuyDetector({
   wsClientFactory: createSolanaWsClientFactory(),
   wsUrl: config.solanaPrimaryWsUrl,
   fetchTx: createFetchParsedTransaction(rpc),
+  fetchSignaturesForMint: createFetchSignaturesForMint(rpc),
+  // No prom-client in the stack yet — surface the `buy-detector.mode` gauge as a
+  // structured log on each primary↔degraded transition (#39).
+  metrics: {
+    observeDetectionToEnqueueMs: () => {},
+    setMode: mode => log.info({ metric: 'buy-detector.mode', mode }, 'buy-detector.mode gauge'),
+  },
   redis,
   sellQueue: {
     add: async job => sellExecutionQueue

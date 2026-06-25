@@ -1,16 +1,17 @@
 import type { SolanaRpcService } from '#root/services/solana-rpc.service.js'
 import type { Logs, ParsedTransactionWithMeta } from '@solana/web3.js'
 
-import type { FetchParsedTransaction } from './index.js'
+import type { FetchParsedTransaction, FetchSignaturesForMint } from './index.js'
 import type { WsClient, WsClientFactory, WsLogsSubscription } from './subscription-manager.js'
 
 import { Connection, PublicKey } from '@solana/web3.js'
 
 /**
  * Builds a `WsClientFactory` backed by `@solana/web3.js` Connection.onLogs.
- * One Connection is opened per call (one per BuyDetector start) so reconnect
- * and degraded-mode (sibling slice #39) can swap the underlying transport
- * without touching higher layers.
+ * One Connection is opened per call (one per BuyDetector start). web3.js
+ * auto-reconnects the socket and silently resumes delivering logs, so the
+ * degraded-mode heartbeat (#39) treats the first log after a silence window as
+ * the fold-back signal rather than observing a reconnect event here.
  */
 export function createSolanaWsClientFactory(): WsClientFactory {
   return (url: string): WsClient => {
@@ -49,4 +50,14 @@ export function createFetchParsedTransaction(rpc: SolanaRpcService): FetchParsed
       return null
     }
   }
+}
+
+/**
+ * Builds the degraded-mode signature poll on top of `SolanaRpcService` (#39).
+ * `getSignaturesForAddress` returns the mint's signatures newest→oldest; the
+ * detector passes the last signature it processed as `until`, so each poll pulls
+ * only the new tail (RPC failover is handled inside the service).
+ */
+export function createFetchSignaturesForMint(rpc: SolanaRpcService): FetchSignaturesForMint {
+  return (mint, { until }) => rpc.getSignaturesForAddress(mint, { until })
 }
