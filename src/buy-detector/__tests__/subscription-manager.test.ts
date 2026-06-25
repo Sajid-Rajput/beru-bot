@@ -1,7 +1,7 @@
 import type { Logs } from '@solana/web3.js'
 
 import { DEX_PROGRAM_IDS, DexProgramId } from '#root/utils/dex-programs.js'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SubscriptionManager } from '../subscription-manager.js'
 
@@ -130,5 +130,142 @@ describe('subscriptionManager', () => {
     await sm.stop()
 
     expect(client().closedSubs()).toBe(1)
+  })
+})
+
+// ── Heartbeat + degraded-mode (#39) ──────────────────────────────────────────
+//
+// Drives the silence heartbeat with vitest fake timers: `now: () => Date.now()`
+// reads the same mocked clock that `advanceTimersByTimeAsync` advances, so one
+// knob moves both the wall clock the heartbeat reads and the interval it runs on.
+
+describe('subscriptionManager — heartbeat + degraded mode', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('flips to degraded mode when a subscription is silent longer than 30s', async () => {
+    vi.useFakeTimers()
+    const { factory } = makeFakeFactory()
+    const modeChanges: Array<'primary' | 'degraded'> = []
+    const sm = new SubscriptionManager({
+      url: 'wss://x',
+      wsClientFactory: factory,
+      onLogs: () => {},
+      now: () => Date.now(),
+      degradedPoll: async () => {},
+      onModeChange: m => modeChanges.push(m),
+    })
+
+    await sm.start([DexProgramId.PUMP_FUN_BC])
+    expect(sm.getStatus().mode).toBe('primary')
+
+    await vi.advanceTimersByTimeAsync(36_000)
+
+    expect(sm.getStatus().mode).toBe('degraded')
+    expect(modeChanges).toEqual(['degraded'])
+
+    await sm.stop()
+  })
+
+  it('stays in primary mode while a subscription keeps receiving logs', async () => {
+    vi.useFakeTimers()
+    const { factory, client } = makeFakeFactory()
+    let polls = 0
+    const sm = new SubscriptionManager({
+      url: 'wss://x',
+      wsClientFactory: factory,
+      onLogs: () => {},
+      now: () => Date.now(),
+      degradedPoll: async () => { polls += 1 },
+    })
+
+    await sm.start([DexProgramId.PUMP_FUN_BC])
+    // A log every 10s for 50s — never silent for the 30s threshold.
+    for (let i = 0; i < 5; i++) {
+      await vi.advanceTimersByTimeAsync(10_000)
+      client().emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_FUN_BC], makeLogs())
+    }
+
+    expect(sm.getStatus().mode).toBe('primary')
+    expect(polls).toBe(0)
+
+    await sm.stop()
+  })
+
+  it('runs the degraded poll immediately and then on the 5s interval while silent', async () => {
+    vi.useFakeTimers()
+    const { factory } = makeFakeFactory()
+    let polls = 0
+    const sm = new SubscriptionManager({
+      url: 'wss://x',
+      wsClientFactory: factory,
+      onLogs: () => {},
+      now: () => Date.now(),
+      degradedPoll: async () => { polls += 1 },
+    })
+
+    await sm.start([DexProgramId.PUMP_FUN_BC])
+    await vi.advanceTimersByTimeAsync(36_000) // enters degraded → one immediate poll
+    expect(polls).toBe(1)
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(polls).toBe(2)
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(polls).toBe(4)
+
+    await sm.stop()
+  })
+
+  it('folds back to primary on the first log after silence, running one final reconcile poll', async () => {
+    vi.useFakeTimers()
+    const { factory, client } = makeFakeFactory()
+    const modeChanges: Array<'primary' | 'degraded'> = []
+    let polls = 0
+    const sm = new SubscriptionManager({
+      url: 'wss://x',
+      wsClientFactory: factory,
+      onLogs: () => {},
+      now: () => Date.now(),
+      degradedPoll: async () => { polls += 1 },
+      onModeChange: m => modeChanges.push(m),
+    })
+
+    await sm.start([DexProgramId.PUMP_FUN_BC])
+    await vi.advanceTimersByTimeAsync(36_000)
+    expect(sm.getStatus().mode).toBe('degraded')
+    const pollsWhenDegraded = polls
+
+    // WS recovers: a log arrives. This is the only fold-back signal the seam
+    // surfaces (web3.js reconnects silently).
+    client().emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_FUN_BC], makeLogs({ signature: 'sig-recover' }))
+    await vi.advanceTimersByTimeAsync(0) // flush the final reconcile poll
+
+    expect(sm.getStatus().mode).toBe('primary')
+    expect(polls).toBe(pollsWhenDegraded + 1) // exactly ONE final reconcile poll
+    expect(modeChanges).toEqual(['degraded', 'primary'])
+
+    // The degraded loop is stopped — no further polls fire.
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(polls).toBe(pollsWhenDegraded + 1)
+
+    await sm.stop()
+  })
+
+  it('getStatus().mode reports stopped after stop()', async () => {
+    vi.useFakeTimers()
+    const { factory } = makeFakeFactory()
+    const sm = new SubscriptionManager({
+      url: 'wss://x',
+      wsClientFactory: factory,
+      onLogs: () => {},
+      now: () => Date.now(),
+    })
+
+    await sm.start([DexProgramId.PUMP_FUN_BC])
+    await sm.stop()
+
+    expect(sm.getStatus().mode).toBe('stopped')
   })
 })

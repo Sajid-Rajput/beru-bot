@@ -2,7 +2,7 @@ import type { DexProgramId } from '#root/utils/dex-programs.js'
 
 import type { Logs, ParsedTransactionWithMeta } from '@solana/web3.js'
 import type { DedupStore, MetricsRecorder, RedisSetExClient, SellQueue } from './enqueuer.js'
-import type { Parser } from './parsers/index.js'
+import type { BuyEvent, Parser } from './parsers/index.js'
 import type { WsClientFactory } from './subscription-manager.js'
 
 import type { WatchedFeatureCache } from './watched-feature-cache.js'
@@ -25,6 +25,23 @@ export type FetchParsedTransaction = (
   signature: string,
 ) => Promise<ParsedTransactionWithMeta | null>
 
+/** Minimal projection of `ConfirmedSignatureInfo` the degraded poll consumes. */
+export interface PolledSignatureInfo {
+  signature: string
+  err: unknown | null
+}
+
+/**
+ * Degraded-mode RPC seam (#39) — wraps `SolanaRpcService.getSignaturesForAddress`.
+ * Returns the mint's signatures newest→oldest; `until` is the last signature the
+ * detector has already processed for that mint, so each poll only pulls the new
+ * tail. Bounded to ~30–60 s of missed slots per ADR-0001.
+ */
+export type FetchSignaturesForMint = (
+  mint: string,
+  options: { until?: string },
+) => Promise<PolledSignatureInfo[]>
+
 export interface BuyDetectorDeps {
   cache: WatchedFeatureCache
   parsers: ReadonlyArray<readonly [DexProgramId, Parser]>
@@ -32,6 +49,8 @@ export interface BuyDetectorDeps {
   wsClientFactory: WsClientFactory
   wsUrl: string
   fetchTx: FetchParsedTransaction
+  /** Degraded-mode signature poll. Defaults to a no-op (no backfill). */
+  fetchSignaturesForMint?: FetchSignaturesForMint
   redis: RedisSetExClient
   sellQueue: SellQueue
   metrics?: MetricsRecorder
@@ -40,7 +59,7 @@ export interface BuyDetectorDeps {
   dedup?: DedupStore
 }
 
-export type BuyDetectorMode = 'primary'
+export type BuyDetectorMode = 'primary' | 'degraded' | 'stopped'
 
 export interface BuyDetectorStatus {
   mode: BuyDetectorMode
@@ -72,6 +91,8 @@ export class BuyDetector {
   private readonly subscriptionManager: SubscriptionManager
   private readonly enqueue: ReturnType<typeof makeEnqueuer>
   private readonly now: () => number
+  /** Newest signature already processed per mint — the degraded poll's `until` cursor. */
+  private readonly lastSeenSig = new Map<string, string>()
 
   constructor(private readonly deps: BuyDetectorDeps) {
     for (const [programId, parser] of deps.parsers)
@@ -91,6 +112,8 @@ export class BuyDetector {
       wsClientFactory: deps.wsClientFactory,
       onLogs: (programId, logs) => this.dispatch(programId, logs),
       now: this.now,
+      degradedPoll: () => this.degradedPoll(),
+      onModeChange: mode => deps.metrics?.setMode?.(mode),
     })
   }
 
@@ -105,10 +128,11 @@ export class BuyDetector {
   }
 
   getStatus(): BuyDetectorStatus {
+    const { mode, lastLogAtMs } = this.subscriptionManager.getStatus()
     return {
-      mode: 'primary',
+      mode,
       subscriptions: [...this.deps.programs],
-      lastLogAtMs: this.subscriptionManager.getStatus().lastLogAtMs,
+      lastLogAtMs,
     }
   }
 
@@ -152,6 +176,69 @@ export class BuyDetector {
     if (!buy)
       return
 
+    // Record the cursor the degraded poll will resume from if the WS dies.
+    this.lastSeenSig.set(buy.mint, buy.signature)
+    await this.processBuy(buy, detectionStartedAtMs)
+  }
+
+  /**
+   * Degraded-mode poll cycle (#39), driven by the SubscriptionManager when the
+   * WS falls silent. For each Watched Mint, pulls the new signature tail via
+   * `getSignaturesForAddress({ until })` and replays it through the SAME
+   * parse → match → enqueue pipeline as primary mode. The Redis `SET NX` dedup
+   * absorbs any overlap with WS notifications across the mode boundary.
+   */
+  private async degradedPoll(): Promise<void> {
+    const fetchSignatures = this.deps.fetchSignaturesForMint
+    if (!fetchSignatures)
+      return
+
+    for (const mint of this.deps.cache.getAllMints()) {
+      const until = this.lastSeenSig.get(mint)
+      const sigs = await fetchSignatures(mint, { until })
+      if (sigs.length === 0)
+        continue
+
+      // getSignaturesForAddress returns newest → oldest; replay oldest → newest
+      // so the pipeline sees buys in chain order, then advance the cursor.
+      for (let i = sigs.length - 1; i >= 0; i--) {
+        if (sigs[i].err != null)
+          continue
+        await this.pollOne(sigs[i].signature)
+      }
+      this.lastSeenSig.set(mint, sigs[0].signature)
+    }
+  }
+
+  /**
+   * Materialise one polled signature into the pipeline. The WS `Logs` object is
+   * synthesised from the fetched transaction's `meta` (log lines + err), so the
+   * existing per-DEX parsers run unchanged. Polling-by-mint loses the DEX, so
+   * each registered parser is tried and the first non-null decode wins.
+   */
+  private async pollOne(signature: string): Promise<void> {
+    const detectionStartedAtMs = this.now()
+    const tx = await this.deps.fetchTx(signature)
+    if (!tx)
+      return
+
+    const logs: Logs = {
+      signature,
+      err: tx.meta?.err ?? null,
+      logs: tx.meta?.logMessages ?? [],
+    }
+
+    for (const [programId] of this.deps.parsers) {
+      const buy = this.registry.get(programId)?.(logs, tx)
+      if (buy) {
+        await this.processBuy(buy, detectionStartedAtMs)
+        return
+      }
+    }
+  }
+
+  /** Shared match → enqueue tail for both primary dispatch and degraded polling. */
+  private async processBuy(buy: BuyEvent, detectionStartedAtMs: number): Promise<void> {
     const entries = this.deps.cache.get(buy.mint)
     if (!entries || entries.length === 0)
       return

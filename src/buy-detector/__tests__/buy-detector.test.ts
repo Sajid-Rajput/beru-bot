@@ -4,7 +4,7 @@ import type { ProjectFeatureConfig } from '../watched-feature-cache.js'
 
 import { LAMPORTS_PER_SOL } from '#root/utils/constants.js'
 import { DEX_PROGRAM_IDS, DexProgramId } from '#root/utils/dex-programs.js'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BuyDetector } from '../index.js'
 import { WatchedFeatureCache } from '../watched-feature-cache.js'
@@ -391,4 +391,171 @@ describe('buyDetector', () => {
 
   // Touch DEX_PROGRAM_IDS so the linter knows the helper is used at runtime
   void DEX_PROGRAM_IDS
+})
+
+// ── Degraded-mode polling (#39) ──────────────────────────────────────────────
+//
+// Drives the silence heartbeat with fake timers. The WS factory never emits, so
+// the subscription falls silent and the detector folds into degraded polling,
+// running the SAME parse → match → enqueue pipeline off `getSignaturesForAddress`
+// results instead of WS notifications.
+
+function makeDegradedTx(logMessages: string[] = [`Program log: ${MINT_WATCHED}`]): ParsedTransactionWithMeta {
+  return { ...STUB_PARSED_TX, slot: 1, meta: { ...(STUB_PARSED_TX.meta ?? {}), logMessages, err: null } } as ParsedTransactionWithMeta
+}
+
+describe('buyDetector — degraded mode (#39)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('degraded poll: polls each watched mint with until=lastSeenSig, parses new signatures oldest→newest, and enqueues SellJobs', async () => {
+    vi.useFakeTimers()
+    const cache = makeCache([makeFeature()]) // watched: MINT_WATCHED
+    const { factory } = makeWsFactory()
+    const queue = makeFakeQueue()
+
+    // getSignaturesForAddress returns newest → oldest.
+    const fetchSignaturesForMint = vi.fn().mockResolvedValue([
+      { signature: 'sig-new-2', err: null },
+      { signature: 'sig-new-1', err: null },
+    ])
+    const fetchTx = vi.fn().mockResolvedValue(makeDegradedTx())
+    const parser = vi.fn().mockImplementation((logs: Logs) => makeBuy(DexProgramId.PUMP_FUN_BC, logs.signature))
+
+    const bd = new BuyDetector({
+      cache,
+      parsers: [[DexProgramId.PUMP_FUN_BC, parser]],
+      programs: [DexProgramId.PUMP_FUN_BC],
+      wsClientFactory: factory,
+      wsUrl: 'wss://x',
+      fetchTx,
+      fetchSignaturesForMint,
+      redis: makeFakeRedis(),
+      sellQueue: queue,
+    })
+
+    await bd.start()
+    await vi.advanceTimersByTimeAsync(36_000) // WS silent → degraded → first poll
+
+    // First poll has no cursor yet for this mint.
+    expect(fetchSignaturesForMint).toHaveBeenCalledWith(MINT_WATCHED, { until: undefined })
+    // Processed oldest → newest (the page is reversed before the pipeline runs).
+    expect(queue.added.map((j: any) => j.triggerSignature)).toEqual(['sig-new-1', 'sig-new-2'])
+
+    await bd.stop()
+  })
+
+  it('skips failed signatures and re-uses the same parser→matcher→enqueuer pipeline', async () => {
+    vi.useFakeTimers()
+    const cache = makeCache([makeFeature()])
+    const { factory } = makeWsFactory()
+    const queue = makeFakeQueue()
+
+    const fetchSignaturesForMint = vi.fn().mockResolvedValue([
+      { signature: 'sig-ok', err: null },
+      { signature: 'sig-failed', err: { InstructionError: [0, 'Custom'] } },
+    ])
+    const fetchTx = vi.fn().mockResolvedValue(makeDegradedTx())
+    const parser = vi.fn().mockImplementation((logs: Logs) => makeBuy(DexProgramId.PUMP_FUN_BC, logs.signature))
+
+    const bd = new BuyDetector({
+      cache,
+      parsers: [[DexProgramId.PUMP_FUN_BC, parser]],
+      programs: [DexProgramId.PUMP_FUN_BC],
+      wsClientFactory: factory,
+      wsUrl: 'wss://x',
+      fetchTx,
+      fetchSignaturesForMint,
+      redis: makeFakeRedis(),
+      sellQueue: queue,
+    })
+
+    await bd.start()
+    await vi.advanceTimersByTimeAsync(36_000)
+
+    // The failed signature is never fetched or enqueued.
+    expect(fetchTx).toHaveBeenCalledTimes(1)
+    expect(fetchTx).toHaveBeenCalledWith('sig-ok')
+    expect(queue.added.map((j: any) => j.triggerSignature)).toEqual(['sig-ok'])
+
+    await bd.stop()
+  })
+
+  it('does not re-enqueue a signature already emitted in primary mode (cross-mode dedup)', async () => {
+    vi.useFakeTimers()
+    const cache = makeCache([makeFeature()])
+    const { factory, emit } = makeWsFactory()
+    const queue = makeFakeQueue()
+    const redis = makeFakeRedis() // one dedup store spans both modes
+
+    const parser = vi.fn().mockImplementation((logs: Logs) => makeBuy(DexProgramId.PUMP_FUN_BC, logs.signature))
+    const fetchTx = vi.fn().mockResolvedValue(makeDegradedTx())
+    // Degraded poll surfaces the very signature primary mode already handled.
+    const fetchSignaturesForMint = vi.fn().mockResolvedValue([{ signature: 'sig-overlap', err: null }])
+
+    const bd = new BuyDetector({
+      cache,
+      parsers: [[DexProgramId.PUMP_FUN_BC, parser]],
+      programs: [DexProgramId.PUMP_FUN_BC],
+      wsClientFactory: factory,
+      wsUrl: 'wss://x',
+      fetchTx,
+      fetchSignaturesForMint,
+      redis,
+      sellQueue: queue,
+    })
+
+    await bd.start()
+
+    // Primary mode handles sig-overlap once.
+    emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_FUN_BC], {
+      err: null,
+      logs: [`Program log: ${MINT_WATCHED}`],
+      signature: 'sig-overlap',
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(queue.added).toHaveLength(1)
+
+    // Fall silent → degraded poll re-surfaces sig-overlap → dedup short-circuits.
+    await vi.advanceTimersByTimeAsync(36_000)
+    expect(queue.added).toHaveLength(1)
+
+    await bd.stop()
+  })
+
+  it('getStatus().mode flips primary→degraded→primary and emits the buy-detector.mode gauge', async () => {
+    vi.useFakeTimers()
+    const cache = makeCache([])
+    const { factory, emit } = makeWsFactory()
+    const modes: Array<'primary' | 'degraded' | 'stopped'> = []
+
+    const bd = new BuyDetector({
+      cache,
+      parsers: [[DexProgramId.PUMP_FUN_BC, () => null]],
+      programs: [DexProgramId.PUMP_FUN_BC],
+      wsClientFactory: factory,
+      wsUrl: 'wss://x',
+      fetchTx: async () => null,
+      fetchSignaturesForMint: async () => [],
+      redis: makeFakeRedis(),
+      sellQueue: makeFakeQueue(),
+      metrics: { observeDetectionToEnqueueMs: () => {}, setMode: m => modes.push(m) },
+    })
+
+    await bd.start()
+    expect(bd.getStatus().mode).toBe('primary')
+
+    await vi.advanceTimersByTimeAsync(36_000)
+    expect(bd.getStatus().mode).toBe('degraded')
+
+    emit(DEX_PROGRAM_IDS[DexProgramId.PUMP_FUN_BC], { err: null, logs: [], signature: 'sig-back' })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(bd.getStatus().mode).toBe('primary')
+
+    expect(modes).toEqual(['degraded', 'primary'])
+
+    await bd.stop()
+    expect(bd.getStatus().mode).toBe('stopped')
+  })
 })
