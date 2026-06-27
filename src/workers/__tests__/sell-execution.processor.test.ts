@@ -10,6 +10,7 @@ import type {
   LockSeam,
   Logger,
   NotificationSeam,
+  ProjectFeatureStatsSeam,
   SellExecutionConfig,
   SellExecutionDeps,
   TransactionRepoSeam,
@@ -220,6 +221,16 @@ function makeFakeNotifications() {
   return Object.assign(seam, { sent })
 }
 
+function makeFakeFeatureStats() {
+  const calls: Array<{ featureId: string, soldTokens: number, receivedSol: number }> = []
+  const seam: ProjectFeatureStatsSeam = {
+    async incrementSellStats(featureId, delta) {
+      calls.push({ featureId, ...delta })
+    },
+  }
+  return Object.assign(seam, { calls })
+}
+
 function makeFakeLock(opts: { acquireResult?: boolean } = {}) {
   const acquired: string[] = []
   const released: string[] = []
@@ -282,6 +293,7 @@ function makeDeps(overrides: Partial<{
   identity: IdentitySeam
   chain: ReturnType<typeof makeFakeChain>
   notifications: ReturnType<typeof makeFakeNotifications>
+  features: ReturnType<typeof makeFakeFeatureStats>
   lock: ReturnType<typeof makeFakeLock>
   crypto: ReturnType<typeof makeFakeCrypto>
   walletGen: WalletGenSeam
@@ -292,6 +304,7 @@ function makeDeps(overrides: Partial<{
   const identity = overrides.identity ?? makeFakeIdentity()
   const chain = overrides.chain ?? makeFakeChain()
   const notifications = overrides.notifications ?? makeFakeNotifications()
+  const features = overrides.features ?? makeFakeFeatureStats()
   const lock = overrides.lock ?? makeFakeLock()
   const crypto = overrides.crypto ?? makeFakeCrypto()
   const walletGen = overrides.walletGen ?? makeFakeWalletGen()
@@ -303,6 +316,7 @@ function makeDeps(overrides: Partial<{
     identity,
     chain,
     notifications,
+    features,
     lock,
     crypto,
     walletGen,
@@ -318,6 +332,7 @@ function makeDeps(overrides: Partial<{
     feeLedger,
     chain,
     notifications,
+    features,
     lock,
     crypto,
     sleepCalls,
@@ -757,5 +772,106 @@ describe('executeSellJob — happy path tracer', () => {
     expect(Number(fee.tier2ReferrerShare)).toBeCloseTo(0.00045, 9)
     expect(fee.tier2ReferrerId).toBe('ref-2')
     expect(Number(fee.platformNet)).toBeCloseTo(0.0054, 9)
+  })
+})
+
+// ── Issue #22: persist running sell stats after each successful completion ────
+
+describe('executeSellJob — sell stats persistence', () => {
+  it('folds the sold token amount and SOL received into the feature totals on a fresh success', async () => {
+    // tokenBalance 1_000_000 × sellPercentage 30% = 300_000 base units sold;
+    // swapOutLamports 500_000_000 = 0.5 SOL received.
+    const deps = makeDeps()
+
+    await executeSellJob(makeSellJob(), deps, makeConfig())
+
+    expect(deps.features.calls).toEqual([
+      { featureId: FEATURE_ID, soldTokens: 300_000, receivedSol: 0.5 },
+    ])
+  })
+
+  it('folds stats once when recovering a sweep that landed but never wrote its fee_ledger', async () => {
+    const transactions = makeFakeTransactionRepo()
+    const ephemeralWallets = makeFakeEphemeralRepo()
+    const feeLedger = makeFakeFeeLedgerRepo() // intentionally empty
+    const chain = makeFakeChain({
+      preLanded: new Set(['funding-prev', 'swap-prev', 'sweep-prev']),
+    })
+    const row = seedExistingTransaction(transactions, {
+      id: 'tx-race',
+      status: 'sweeping',
+      fundingTxSignature: 'funding-prev',
+      sellTxSignature: 'swap-prev',
+      sweepTxSignature: 'sweep-prev',
+      solAmountReceived: '1.0',
+    })
+    seedEphemeralWallet(ephemeralWallets, row.id)
+
+    const deps = makeDeps({ transactions, ephemeralWallets, feeLedger, chain })
+    await executeSellJob(makeSellJob(), deps, makeConfig())
+
+    // Token amount is unknown on the recovery path, so it folds 0 tokens but the
+    // SOL proceeds captured during the prior swap.
+    expect(deps.features.calls).toEqual([
+      { featureId: FEATURE_ID, soldTokens: 0, receivedSol: 1.0 },
+    ])
+  })
+
+  it('does NOT re-fold stats when the sweep already landed and the fee_ledger exists', async () => {
+    const transactions = makeFakeTransactionRepo()
+    const ephemeralWallets = makeFakeEphemeralRepo()
+    const feeLedger = makeFakeFeeLedgerRepo()
+    const chain = makeFakeChain({
+      preLanded: new Set(['funding-prev', 'swap-prev', 'sweep-prev']),
+    })
+    const row = seedExistingTransaction(transactions, {
+      id: 'tx-done',
+      status: 'completed',
+      fundingTxSignature: 'funding-prev',
+      sellTxSignature: 'swap-prev',
+      sweepTxSignature: 'sweep-prev',
+      solAmountReceived: '0.5',
+    })
+    seedEphemeralWallet(ephemeralWallets, row.id)
+    feeLedger.byTxId.set(row.id, {
+      transactionId: row.id,
+      userId: USER_ID,
+      grossSol: '0.5',
+      grossFee: '0.005',
+      referralDiscount: '0',
+      effectiveFee: '0.005',
+      tier1ReferrerShare: '0',
+      tier1ReferrerId: null,
+      tier2ReferrerShare: '0',
+      tier2ReferrerId: null,
+      platformNet: '0.005',
+      collectionStatus: 'pending',
+    })
+
+    const deps = makeDeps({ transactions, ephemeralWallets, feeLedger, chain })
+    await executeSellJob(makeSellJob(), deps, makeConfig())
+
+    expect(deps.features.calls).toEqual([])
+  })
+
+  it('does NOT fold stats when the job is skipped (lock held elsewhere)', async () => {
+    const deps = makeDeps({ lock: makeFakeLock({ acquireResult: false }) })
+
+    await executeSellJob(makeSellJob(), deps, makeConfig())
+
+    expect(deps.features.calls).toEqual([])
+  })
+
+  it('does NOT fold stats when funding fails terminally', async () => {
+    const chain = makeFakeChain()
+    chain.sendFunding = async (input) => {
+      chain.fundingCalls.push(input as unknown as Record<string, unknown>)
+      throw new Error('rpc dead')
+    }
+    const deps = makeDeps({ chain })
+
+    await executeSellJob(makeSellJob(), deps, makeConfig())
+
+    expect(deps.features.calls).toEqual([])
   })
 })

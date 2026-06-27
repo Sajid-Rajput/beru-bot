@@ -1,6 +1,7 @@
 import type { Context, SendNavigationOptions } from '#root/bot/context.js'
 import type { MiddlewareFn } from 'grammy'
 import type { Message } from 'grammy/types'
+import { isMessageNotModifiedError } from '#root/bot/helpers/telegram-errors.js'
 import { sendAnimation } from '#root/bot/helpers/video-sender.js'
 import { KEY_DISPLAY_DELETE_AFTER } from '#root/utils/constants.js'
 import { createLogger } from '#root/utils/logger.js'
@@ -139,6 +140,10 @@ export const messageManagement: MiddlewareFn<Context> = async (ctx, next) => {
     await ctx.api.editMessageText(chatId, messageId, text, {
       parse_mode: 'HTML',
     }).catch((err) => {
+      // Identical-text re-render throws "message is not modified" — a no-op,
+      // not a failure (#22). Swallow it silently; surface anything else.
+      if (isMessageNotModifiedError(err))
+        return
       log.warn({ err, chatId, messageId }, 'Failed to edit pinned status message')
     })
   }

@@ -124,6 +124,19 @@ export interface NotificationSeam {
   enqueueNotification: (job: NotificationJob) => Promise<void>
 }
 
+export interface ProjectFeatureStatsSeam {
+  /**
+   * Atomically folds one completed sell into the feature's running totals
+   * (`total_sell_count`, `total_sol_received`, `total_sold_amount`) so the
+   * pinned status message reflects them on the next render and survives a
+   * worker restart (issue #22). Called once per successful completion.
+   */
+  incrementSellStats: (
+    featureId: string,
+    delta: { soldTokens: number, receivedSol: number },
+  ) => Promise<void>
+}
+
 export interface LockSeam {
   acquireLock: (key: string, ttlSeconds: number) => Promise<boolean>
   releaseLock: (key: string) => Promise<void>
@@ -160,6 +173,7 @@ export interface SellExecutionDeps {
   identity: IdentitySeam
   chain: ChainSeam
   notifications: NotificationSeam
+  features: ProjectFeatureStatsSeam
   lock: LockSeam
   crypto: CryptoSeam
   walletGen: WalletGenSeam
@@ -319,6 +333,9 @@ export async function executeSellJob(
           fee,
         })
       }
+      // The token amount sold isn't recoverable on this path (the swap ran in a
+      // prior process), so fold 0 tokens but the SOL captured during that swap.
+      await deps.features.incrementSellStats(job.featureId, { soldTokens: 0, receivedSol: grossSol })
       await deps.notifications.enqueueNotification({
         userId,
         kind: 'sell.completed',
@@ -501,7 +518,14 @@ export async function executeSellJob(
       fee,
     })
 
-    // 9. Terminal notification
+    // 9. Fold this sell into the feature's running totals so the pinned status
+    //    message reflects it on the next render and survives a restart (#22).
+    await deps.features.incrementSellStats(job.featureId, {
+      soldTokens: Number(tokenAmount),
+      receivedSol: grossSol,
+    })
+
+    // 10. Terminal notification
     await deps.notifications.enqueueNotification({
       userId,
       kind: 'sell.completed',

@@ -11,6 +11,7 @@ import type {
   LockSeam,
   Logger,
   NotificationSeam,
+  ProjectFeatureStatsSeam,
   SellExecutionConfig,
   SellExecutionDeps,
   TransactionRepoSeam,
@@ -20,6 +21,7 @@ import type {
 import { Buffer } from 'node:buffer'
 import { config } from '#root/config.js'
 import { db } from '#root/db/index.js'
+import { ProjectFeatureRepository } from '#root/db/repositories/project-feature.repository.js'
 import {
   ephemeralWallets,
   feeLedger,
@@ -230,6 +232,15 @@ function createNotificationSeam(): NotificationSeam {
   }
 }
 
+function createFeatureStatsSeam(): ProjectFeatureStatsSeam {
+  const features = new ProjectFeatureRepository()
+  return {
+    async incrementSellStats(featureId, delta) {
+      await features.incrementSellStats(featureId, delta)
+    },
+  }
+}
+
 function createLockSeam(redis: Redis): LockSeam {
   return {
     async acquireLock(key, ttlSeconds) {
@@ -426,6 +437,7 @@ export function registerSellExecutionWorker(opts: SellExecutionWorkerOptions): {
     identity: createIdentitySeam(),
     chain: createChainSeam({ rpc: opts.rpc, jupiter, crypto, logger: log }),
     notifications: createNotificationSeam(),
+    features: createFeatureStatsSeam(),
     lock: createLockSeam(opts.redis),
     crypto: createCryptoSeam(crypto),
     walletGen: createWalletGenSeam(),
