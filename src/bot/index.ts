@@ -16,6 +16,7 @@ import { quickSetupHandler } from '#root/bot/handlers/quick-setup.js'
 import { referralsHandler } from '#root/bot/handlers/referrals.js'
 import { shadowSellHandler } from '#root/bot/handlers/shadow-sell.js'
 import { startHandler } from '#root/bot/handlers/start.js'
+import { waitlistHandler } from '#root/bot/handlers/waitlist.js'
 import { walletsHandler } from '#root/bot/handlers/wallets.js'
 import { whitelistHandler } from '#root/bot/handlers/whitelist.js'
 import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
@@ -105,6 +106,7 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
 
   // Handlers
   protectedBot.use(startHandler)
+  protectedBot.use(waitlistHandler) // Pre-launch waitlist Join/Check callbacks (#14)
   protectedBot.use(homeHandler)
   protectedBot.use(shadowSellHandler)
   protectedBot.use(myProjectsHandler)

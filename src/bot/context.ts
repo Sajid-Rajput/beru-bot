@@ -41,6 +41,11 @@ export interface SessionData {
    *  so wallet-choice callbacks stay within the 64-byte callback-data limit.
    */
   pendingNewProjectMint?: string
+  /**
+   * Telegram id of the waitlist referrer captured from a `wl_<id>` deep link
+   * (issue #14). Held until the user taps "Join Waitlist", then credited.
+   */
+  pendingWaitlistReferrer?: number
 }
 
 /** Options for sendNavigationMessage */

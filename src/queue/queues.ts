@@ -87,6 +87,16 @@ export async function enqueueSellJob(data: SellJobData): Promise<void> {
 }
 
 /**
+ * Enqueue a notification for the bot process to render + deliver. Used by
+ * bot-side flows (e.g. the waitlist referral credit, issue #14) that need to
+ * message a *different* user. The job name carries kind+user+timestamp for
+ * observability; no custom jobId, so every notification is delivered.
+ */
+export async function enqueueNotification(job: NotificationJob): Promise<void> {
+  await notificationQueue.add(`${job.kind}:${job.userId}:${Date.now()}`, job)
+}
+
+/**
  * Close all queue connections gracefully.
  * Call in SIGTERM/SIGINT handlers after workers have stopped.
  */

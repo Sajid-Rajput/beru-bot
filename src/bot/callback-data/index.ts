@@ -68,3 +68,9 @@ export const CB_BACK_DASH_PREFIX = 'cb_bd:'
 
 // ── Referrals / Payout ──────────────────────────────────────────────────
 export const CB_SET_PAYOUT_WALLET = 'cb_set_pw'
+
+// ── Waitlist (pre-launch, issue #14) ─────────────────────────────────────
+/** Join the waitlist (reads any pending referrer from session) */
+export const CB_WAITLIST_JOIN = 'cb_wl_join'
+/** Check the member's current waitlist position + referral stats */
+export const CB_WAITLIST_CHECK = 'cb_wl_check'

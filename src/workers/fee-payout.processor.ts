@@ -30,7 +30,10 @@ import { solToLamports } from '#root/utils/lamports.js'
 
 /** Per-user pending referral earnings, as surfaced by the earnings seam. */
 export interface UserEarnings {
+  /** Internal user id (UUID) — used to reserve the referral_payouts row. */
   userId: string
+  /** Recipient's Telegram chat id — used to address the payout.sent notification. */
+  telegramId: string
   /** Destination for the SOL transfer; null when the user never set one. */
   payoutWalletAddress: string | null
   /** Pending amount as a `decimal(20, 9)` string (> 0). */
@@ -170,7 +173,7 @@ export async function runPayoutCycle(
     await deps.payouts.markConfirmed(id, signature).catch(err =>
       deps.logger.error({ err, payoutId: id, signature }, 'referral payout sent on-chain but markConfirmed failed; reconcile'))
     await deps.notifications.enqueue({
-      userId: earning.userId,
+      userId: earning.telegramId,
       kind: 'payout.sent',
       context: { amountSol: Number(earning.pendingSol), txSignature: signature },
     }).catch(err => deps.logger.warn({ err, userId: earning.userId }, 'referral payout notification enqueue failed'))

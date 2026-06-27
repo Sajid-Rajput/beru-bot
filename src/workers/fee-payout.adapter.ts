@@ -21,6 +21,7 @@ type Db = typeof DrizzleDb
 /** Raw shape returned by the pending-earnings aggregate query. */
 interface PendingEarningRow extends Record<string, unknown> {
   user_id: string
+  telegram_id: string
   payout_wallet_address: string | null
   pending_sol: string
   last_payout_end: Date | null
@@ -60,6 +61,7 @@ export function createEarningsSeam(db: Db): EarningsSeam {
         )
         SELECT
           e.referrer_id AS user_id,
+          u.telegram_id::text AS telegram_id,
           u.payout_wallet_address AS payout_wallet_address,
           (e.total - COALESCE(p.total, 0))::text AS pending_sol,
           p.last_end AS last_payout_end
@@ -71,6 +73,7 @@ export function createEarningsSeam(db: Db): EarningsSeam {
 
       return Array.from(result).map(row => ({
         userId: row.user_id,
+        telegramId: row.telegram_id,
         payoutWalletAddress: row.payout_wallet_address,
         pendingSol: row.pending_sol,
         lastPayoutEnd: row.last_payout_end,

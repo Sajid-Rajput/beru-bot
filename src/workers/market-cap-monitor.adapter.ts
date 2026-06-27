@@ -13,7 +13,7 @@ import type {
   NotificationSeam,
 } from './market-cap-monitor.processor.js'
 
-import { projectFeatures, projects } from '#root/db/schema/index.js'
+import { projectFeatures, projects, users } from '#root/db/schema/index.js'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 
 type Db = typeof DrizzleDb
@@ -29,7 +29,7 @@ const ACTIVE_STATUSES: FeatureStatus[] = ['pending', 'watching', 'executing']
 const MONITOR_COLUMNS = {
   featureId: projectFeatures.id,
   projectId: projectFeatures.projectId,
-  userId: projects.userId,
+  telegramId: users.telegramId,
   mint: projects.tokenMint,
   status: projectFeatures.status,
   isWatching: projectFeatures.isWatchingTransactions,
@@ -45,7 +45,7 @@ const MONITOR_COLUMNS = {
 interface MonitorRow {
   featureId: string
   projectId: string
-  userId: string
+  telegramId: number
   mint: string
   status: FeatureStatus
   isWatching: boolean
@@ -62,7 +62,7 @@ function mapRow(row: MonitorRow): MonitorFeature {
   return {
     featureId: row.featureId,
     projectId: row.projectId,
-    userId: row.userId,
+    telegramId: String(row.telegramId),
     mint: row.mint,
     status: row.status,
     isWatching: row.isWatching,
@@ -83,6 +83,7 @@ export function createFeatureRepoSeam(db: Db): FeatureRepoSeam {
         .select(MONITOR_COLUMNS)
         .from(projectFeatures)
         .innerJoin(projects, eq(projectFeatures.projectId, projects.id))
+        .innerJoin(users, eq(projects.userId, users.id))
         .where(and(inArray(projectFeatures.status, ACTIVE_STATUSES), isNull(projects.deletedAt)))
       return rows.map(mapRow)
     },
@@ -91,6 +92,7 @@ export function createFeatureRepoSeam(db: Db): FeatureRepoSeam {
         .select(MONITOR_COLUMNS)
         .from(projectFeatures)
         .innerJoin(projects, eq(projectFeatures.projectId, projects.id))
+        .innerJoin(users, eq(projects.userId, users.id))
         .where(and(eq(projectFeatures.isWatchingTransactions, true), isNull(projects.deletedAt)))
       return rows.map(mapRow)
     },

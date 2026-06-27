@@ -718,6 +718,66 @@ export function buildPinnedStatusText(d: PinnedStatusData): string {
   ].join('\n')
 }
 
+// ── Waitlist Screens (issue #14, pre-launch) ─────────────────────────────────
+
+export interface WaitlistJoinedData {
+  position: number
+  total: number
+  referralLink: string
+}
+
+export interface WaitlistPositionData {
+  position: number
+  total: number
+  referralCount: number
+  referralLink: string
+}
+
+/** Pre-launch landing shown by `/start` when PRE_LAUNCH_MODE is on. */
+export function buildWaitlistWelcomeText(): string {
+  return [
+    '🌑 <b>THE MONARCH RISES SOON</b> 🌑',
+    '',
+    'Beru Bot — Shadow Sell — is not yet open to the public.',
+    'Join the waitlist to be among the first soldiers enlisted when we launch.',
+    '',
+    '⚡ <b>Jump the queue:</b> every soldier you invite with your referral link',
+    'moves you one place closer to the front.',
+    '',
+    '💡 Tap <b>Join Waitlist</b> below to claim your place.',
+  ].join('\n')
+}
+
+/** Confirmation shown right after a member joins the waitlist. */
+export function buildWaitlistJoinedText(d: WaitlistJoinedData): string {
+  return [
+    '✅ <b>YOU\'RE ENLISTED, SOLDIER</b> ✅',
+    '',
+    `Your place in the legion: <b>#${d.position}</b> of <b>${d.total}</b>.`,
+    '',
+    '⚡ Invite other soldiers to climb the ranks — each one who joins',
+    'with your link moves you up by one.',
+    '',
+    '🔗 Your invite link:',
+    `<code>${d.referralLink}</code>`,
+  ].join('\n')
+}
+
+/** Check-position screen with the member's current standing + referral stats. */
+export function buildWaitlistPositionText(d: WaitlistPositionData): string {
+  return [
+    '🎯 <b>YOUR WAITLIST STANDING</b> 🎯',
+    '',
+    `Position: <b>#${d.position}</b> of <b>${d.total}</b>`,
+    `Soldiers recruited: <b>${d.referralCount}</b>`,
+    '',
+    '⚡ Share your link to climb higher — every recruit moves you up by one.',
+    '',
+    '🔗 Your invite link:',
+    `<code>${d.referralLink}</code>`,
+  ].join('\n')
+}
+
 // ── Utility ──────────────────────────────────────────────────────────────
 
 function escapeHtml(text: string): string {
