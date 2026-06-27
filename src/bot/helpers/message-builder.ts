@@ -642,21 +642,42 @@ export interface PinnedStatusData {
   totalSellCount: number
   totalSolReceived: string
   totalSoldAmount: string
-  state: 'watching' | 'paused' | 'stopped'
+  /**
+   * Lifecycle state driving which of the five templates renders (issue #22).
+   * `watching` covers both `initial` (no sells yet) and `after-sells` — the
+   * renderer derives which from `totalSellCount`.
+   */
+  state: 'watching' | 'paused' | 'stopped' | 'completed'
 }
 
 export function buildPinnedStatusText(d: PinnedStatusData): string {
   const mcap = d.config.targetMarketCapUsd === 0
     ? '$0'
     : `$${formatMcap(d.config.targetMarketCapUsd)}`
+  const title = `${escapeHtml(d.tokenName)} (${escapeHtml(d.tokenSymbol)})`
+  const sells = d.totalSellCount
+  const solEarned = Number(d.totalSolReceived).toFixed(4)
+  const tokensSold = Number(d.totalSoldAmount).toFixed(4)
+
+  if (d.state === 'completed') {
+    return [
+      '🌑 SHADOW SELL — ✅ COMPLETED',
+      '',
+      title,
+      '',
+      `📊 Final Stats: 🗡️ ${sells} | 💰 ${solEarned} SOL | 🪙 ${tokensSold}`,
+      '',
+      '✅ All tokens sold — wallet balance is empty.',
+    ].join('\n')
+  }
 
   if (d.state === 'stopped') {
     return [
       '🌑 SHADOW SELL — ⏹️ STOPPED',
       '',
-      `${escapeHtml(d.tokenName)} (${escapeHtml(d.tokenSymbol)})`,
+      title,
       '',
-      `📊 Stats: 🗡️ ${d.totalSellCount} | 💰 ${Number(d.totalSolReceived).toFixed(4)} SOL | 🪙 ${Number(d.totalSoldAmount).toFixed(4)}`,
+      `📊 Stats: 🗡️ ${sells} | 💰 ${solEarned} SOL | 🪙 ${tokensSold}`,
       '',
       'Stopped by user.',
     ].join('\n')
@@ -671,16 +692,25 @@ export function buildPinnedStatusText(d: PinnedStatusData): string {
     ? '⏸️ Paused — MCAP below threshold. Resumes automatically.'
     : '⏳ Watching for buys...'
 
+  // `initial`: the active state before any sell has fired. Show a clean
+  // "no sells yet" body rather than an all-zeros stats block. Once a sell
+  // lands (`after-sells`) the session-stats block takes over.
+  const statsBlock = d.state === 'watching' && sells === 0
+    ? ['👁️ No sells yet — watching for the first buy.']
+    : [
+        '📊 Session Stats:',
+        `🗡️ Sells: ${sells}`,
+        `💰 SOL Earned: ${solEarned}`,
+        `🪙 Tokens Sold: ${tokensSold}`,
+      ]
+
   return [
     header,
     '',
-    `${escapeHtml(d.tokenName)} (${escapeHtml(d.tokenSymbol)})`,
+    title,
     `📋 <code>${d.tokenMint}</code>`,
     '',
-    '📊 Session Stats:',
-    `🗡️ Sells: ${d.totalSellCount}`,
-    `💰 SOL Earned: ${Number(d.totalSolReceived).toFixed(4)}`,
-    `🪙 Tokens Sold: ${Number(d.totalSoldAmount).toFixed(4)}`,
+    ...statsBlock,
     '',
     `⚙️ Min/Max: ${d.config.minSellPercentage}-${d.config.maxSellPercentage}% | MCAP: ${mcap} | Buy: ${d.config.minBuyAmountSol}`,
     '',

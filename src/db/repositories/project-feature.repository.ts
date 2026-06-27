@@ -91,6 +91,27 @@ export class ProjectFeatureRepository {
       .where(eq(projectFeatures.id, id))
   }
 
+  /**
+   * Atomically folds one completed sell into the running totals (issue #22).
+   * The increment runs server-side (`col + delta`) so concurrent sells on the
+   * same feature can't clobber each other's reads, and the persisted figures
+   * survive a worker restart for the next pinned-status render.
+   */
+  async incrementSellStats(
+    id: string,
+    delta: { soldTokens: number, receivedSol: number },
+  ): Promise<void> {
+    await db
+      .update(projectFeatures)
+      .set({
+        totalSellCount: sql`${projectFeatures.totalSellCount} + 1`,
+        totalSoldAmount: sql`${projectFeatures.totalSoldAmount} + ${delta.soldTokens.toFixed(9)}::numeric`,
+        totalSolReceived: sql`${projectFeatures.totalSolReceived} + ${delta.receivedSol.toFixed(9)}::numeric`,
+        updatedAt: new Date(),
+      })
+      .where(eq(projectFeatures.id, id))
+  }
+
   /** Aggregate sell stats across all active projects for a user. */
   async getAggregateStatsByUserId(userId: string): Promise<{
     totalSells: number

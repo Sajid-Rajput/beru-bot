@@ -3,6 +3,7 @@ import type { Logger } from '#root/utils/logger.js'
 import type { ConnectionOptions } from 'bullmq'
 import type { Api, RawApi } from 'grammy'
 import { buildPinnedStatusText } from '#root/bot/helpers/message-builder.js'
+import { isMessageNotModifiedError } from '#root/bot/helpers/telegram-errors.js'
 import { QUEUE_NOTIFICATION } from '#root/utils/constants.js'
 import { Worker } from 'bullmq'
 
@@ -191,9 +192,12 @@ export function registerNotificationWorker(
         await bot.api.editMessageText(chatId, messageId, text, { parse_mode: 'HTML' })
       }
       catch (err) {
-        // 400 "message is not modified" / "message to edit not found" are benign
-        // (user un-pinned or deleted the status message). Don't fail the job —
-        // the transient alert still informs the user of the state change.
+        // Re-rendering the pinned status with identical text is an expected
+        // no-op (#22) — swallow it silently. Other 400s (e.g. "message to edit
+        // not found" after the user un-pinned/deleted it) are benign too but
+        // worth a warn; never fail the job, the transient alert still informs.
+        if (isMessageNotModifiedError(err))
+          return
         log.warn({ err, chatId, messageId }, 'pinned status edit failed')
       }
     },
