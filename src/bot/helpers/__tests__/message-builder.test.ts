@@ -1,5 +1,10 @@
 import type { PinnedStatusData } from '#root/bot/helpers/message-builder.js'
-import { buildPinnedStatusText } from '#root/bot/helpers/message-builder.js'
+import {
+  buildPinnedStatusText,
+  buildWaitlistJoinedText,
+  buildWaitlistPositionText,
+  buildWaitlistWelcomeText,
+} from '#root/bot/helpers/message-builder.js'
 import { describe, expect, it } from 'vitest'
 
 // ── buildPinnedStatusText: five lifecycle states ────────────────────────────
@@ -93,5 +98,47 @@ describe('buildPinnedStatusText', () => {
     ]
 
     expect(new Set(messages).size).toBe(5)
+  })
+})
+
+// ── Waitlist screens (issue #14, pre-launch) ─────────────────────────────────
+
+describe('buildWaitlistWelcomeText', () => {
+  it('invites the user to join and explains the referral mechanic', () => {
+    const text = buildWaitlistWelcomeText()
+
+    expect(text.toLowerCase()).toContain('waitlist')
+    // The referral incentive (jump the queue) must be surfaced.
+    expect(text.toLowerCase()).toMatch(/refer|invite|link/)
+  })
+})
+
+describe('buildWaitlistJoinedText', () => {
+  it('confirms the joined position out of the total and shows the referral link', () => {
+    const text = buildWaitlistJoinedText({
+      position: 42,
+      total: 1247,
+      referralLink: 'https://t.me/BeruMonarchBot?start=wl_555',
+    })
+
+    expect(text).toContain('#42')
+    expect(text).toContain('1247')
+    expect(text).toContain('https://t.me/BeruMonarchBot?start=wl_555')
+  })
+})
+
+describe('buildWaitlistPositionText', () => {
+  it('shows the current position, total, referral count, and link', () => {
+    const text = buildWaitlistPositionText({
+      position: 7,
+      total: 1247,
+      referralCount: 3,
+      referralLink: 'https://t.me/BeruMonarchBot?start=wl_555',
+    })
+
+    expect(text).toContain('#7')
+    expect(text).toContain('1247')
+    expect(text).toContain('3')
+    expect(text).toContain('https://t.me/BeruMonarchBot?start=wl_555')
   })
 })

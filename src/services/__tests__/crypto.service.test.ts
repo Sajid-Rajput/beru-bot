@@ -1,8 +1,14 @@
 import type { WalletEncryptionPayload } from '../crypto.service.js'
 
 import { Buffer } from 'node:buffer'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { CryptoService } from '../crypto.service.js'
+
+// Each round-trip runs real PBKDF2 at 600k iterations (a security parameter we
+// must NOT lower). That is ~1s of CPU per call; under the full suite's parallel
+// load it can blow past the 5s default. Give this whole file generous headroom
+// so it is reliably green without weakening the production crypto.
+vi.setConfig({ testTimeout: 30_000 })
 
 // ── Test constants ────────────────────────────────────────────────────────────
 const VALID_HEX_64 = 'a'.repeat(64) // 64 lowercase hex chars (valid master key)

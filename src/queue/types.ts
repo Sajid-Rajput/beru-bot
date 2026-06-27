@@ -58,6 +58,12 @@ export interface SellJobData {
 // Telegram message. Every job carries everything needed to render — the
 // consumer makes zero DB reads. See `docs/adr/0002-sell-execution-state-machine.md`
 // decision 6 and the `Notification` entry in `CONTEXT.md`.
+//
+// CONTRACT: `userId` is the recipient's **Telegram chat id** (the consumer
+// delivers via `sendMessage(Number(job.userId), …)` — see notification.consumer.ts).
+// It is NOT the internal `users.id` UUID. Producers that start from a UUID must
+// resolve `users.telegram_id` before enqueuing; the consumer rejects a
+// non-numeric id rather than silently sending to NaN.
 
 export type NotificationJob =
   | {
@@ -137,6 +143,20 @@ export type NotificationJob =
     context: {
       severity: string
       message: string
+    }
+  }
+  | {
+    /**
+     * A waitlist member earned a referral (issue #14). Someone joined the
+     * waitlist via their `wl_<telegramId>` deep link, so their position
+     * improved by one and their referral count went up. `userId` is the
+     * referrer's Telegram id (the consumer sends to `Number(userId)`).
+     */
+    userId: string
+    kind: 'waitlist.referral'
+    context: {
+      newPosition: number
+      referralCount: number
     }
   }
 

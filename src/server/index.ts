@@ -2,9 +2,12 @@ import type { Bot } from '#root/bot/index.js'
 import type { Config } from '#root/config.js'
 import type { Env } from '#root/server/environment.js'
 import type { Logger } from '#root/utils/logger.js'
+import { WaitlistRepository } from '#root/db/repositories/waitlist.repository.js'
+import { redis } from '#root/queue/redis.js'
 import { setLogger } from '#root/server/middlewares/logger.js'
 import { requestId } from '#root/server/middlewares/request-id.js'
 import { requestLogger } from '#root/server/middlewares/request-logger.js'
+import { createWaitlistRoutes } from '#root/server/routes/waitlist.js'
 import { serve } from '@hono/node-server'
 import { webhookCallback } from 'grammy'
 import { Hono } from 'hono'
@@ -56,6 +59,9 @@ export function createServer(dependencies: Dependencies) {
   })
 
   server.get('/', c => c.json({ status: true }))
+
+  // Public marketing API (issue #14, §7.8) — proxied via Caddy `/api/*`.
+  server.route('/api/waitlist', createWaitlistRoutes({ repo: new WaitlistRepository(), redis }))
 
   if (config.isWebhookMode) {
     server.post(

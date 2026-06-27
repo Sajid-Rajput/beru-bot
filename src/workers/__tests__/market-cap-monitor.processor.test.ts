@@ -39,7 +39,7 @@ function makeFeature(overrides: Partial<MonitorFeature> = {}): MonitorFeature {
   return {
     featureId: 'feat-1',
     projectId: 'proj-1',
-    userId: '42',
+    telegramId: '1000',
     mint: MINT,
     status: 'pending',
     isWatching: false,
@@ -193,7 +193,7 @@ describe('runHotCycle — activation (pending → watching)', () => {
     expect(notifications.jobs).toHaveLength(1)
     expect(notifications.jobs[0]).toMatchObject({
       kind: 'feature.state',
-      userId: '42',
+      userId: '1000',
       context: { newState: 'watching' },
     })
     // The freshly-polled market cap is persisted.
@@ -224,7 +224,7 @@ describe('runHotCycle — pause (watching → pending)', () => {
     expect(notifications.jobs).toHaveLength(1)
     expect(notifications.jobs[0]).toMatchObject({
       kind: 'feature.state',
-      userId: '42',
+      userId: '1000',
       context: { newState: 'paused' },
     })
     expect(repo.mcapUpdates).toContainEqual({ id: 'feat-1', mcap: 90_000 })

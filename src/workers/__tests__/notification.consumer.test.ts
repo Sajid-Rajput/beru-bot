@@ -142,6 +142,19 @@ describe('renderNotification', () => {
     const { text } = renderNotification(makeFeatureStateJob({ newState: 'paused' }))
     expect(text.toLowerCase()).toContain('paused')
   })
+
+  it('waitlist.referral announces the improved position and referral count', () => {
+    const job: NotificationJob = {
+      userId: '42',
+      kind: 'waitlist.referral',
+      context: { newPosition: 7, referralCount: 3 },
+    }
+
+    const { text } = renderNotification(job)
+
+    expect(text).toContain('#7')
+    expect(text).toContain('3')
+  })
 })
 
 describe('createNotificationProcessor', () => {
@@ -166,6 +179,18 @@ describe('createNotificationProcessor', () => {
     const { text } = renderNotification(job)
     expect(sendMessage).toHaveBeenCalledTimes(1)
     expect(sendMessage).toHaveBeenCalledWith(42, text)
+  })
+
+  it('rejects a non-numeric userId (a UUID slipped in) instead of silently sending to NaN', async () => {
+    const { sendMessage, processor } = setup()
+    const job = {
+      userId: '11111111-2222-3333-4444-555555555555',
+      kind: 'sell.failed',
+      context: { mint: 'm', symbol: 'X', reason: 'boom' },
+    } as unknown as NotificationJob
+
+    await expect(processor(job)).rejects.toThrow(/Telegram chat id|userId/i)
+    expect(sendMessage).not.toHaveBeenCalled()
   })
 
   it('schedules auto-delete with the kind TTL for sell.completed', async () => {
@@ -284,6 +309,7 @@ describe('aUTO_DELETE_TTL_MS', () => {
       'feature.state': 30_000,
       'payout.sent': null,
       'admin.alert': null,
+      'waitlist.referral': 30_000,
     })
   })
 })

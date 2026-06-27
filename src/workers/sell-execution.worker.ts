@@ -28,6 +28,7 @@ import {
   projectFeatures,
   projects,
   transactions,
+  users,
   wallets,
 } from '#root/db/schema/index.js'
 import { notificationQueue } from '#root/queue/queues.js'
@@ -210,16 +211,17 @@ function createFeeLedgerRepoSeam(): FeeLedgerRepoSeam {
 
 function createIdentitySeam(): IdentitySeam {
   return {
-    async getUserIdByFeatureId(featureId) {
+    async resolveIdentity(featureId) {
       const [row] = await db
-        .select({ userId: projects.userId })
+        .select({ userId: projects.userId, telegramId: users.telegramId })
         .from(projectFeatures)
         .innerJoin(projects, eq(projectFeatures.projectId, projects.id))
+        .innerJoin(users, eq(projects.userId, users.id))
         .where(eq(projectFeatures.id, featureId))
         .limit(1)
       if (!row)
-        throw new Error(`Could not resolve userId for feature ${featureId}`)
-      return row.userId
+        throw new Error(`Could not resolve identity for feature ${featureId}`)
+      return { userId: row.userId, telegramId: String(row.telegramId) }
     },
   }
 }

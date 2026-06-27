@@ -35,7 +35,8 @@ export type FeatureStatus =
 export interface MonitorFeature {
   featureId: string
   projectId: string
-  userId: string
+  /** Recipient's Telegram chat id — the feature.state notification is sent here. */
+  telegramId: string
   mint: string
   status: FeatureStatus
   isWatching: boolean
@@ -131,7 +132,7 @@ function featureStateNotification(
   newState: 'watching' | 'paused',
 ): NotificationJob {
   return {
-    userId: feature.userId,
+    userId: feature.telegramId,
     kind: 'feature.state',
     context: {
       newState,

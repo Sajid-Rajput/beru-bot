@@ -78,6 +78,10 @@ export const GRACEFUL_SHUTDOWN_TIMEOUT = 30_000
 export const RATE_LIMIT_MESSAGES = 30
 /** Callback query button debounce window (ms) */
 export const BUTTON_DEBOUNCE = 1_000
+/** Public waitlist count endpoint: max requests per IP per minute (issue #14, §7.8) */
+export const WAITLIST_COUNT_RATE_MAX = 60
+/** Public waitlist count cache TTL (seconds, issue #14 §7.8) */
+export const WAITLIST_COUNT_TTL = 300
 
 // ── Domain limits (§15.7) ────────────────────────────────────────────────
 /** Maximum Shadow Sell projects a single user may own */
@@ -104,6 +108,7 @@ export const redisKeys = {
   sellLock: (featureId: string) => `sell-lock:${featureId}`,
   nonce: (nonceValue: string) => `nonce:${nonceValue}`,
   rate: (telegramId: number | string) => `rate:${telegramId}`,
+  apiRate: (scope: string, ip: string) => `rate:api:${scope}:${ip}`,
   debounce: (telegramId: number | string, callbackData: string) =>
     `debounce:${telegramId}:${callbackData}`,
   fileCache: () => 'bot:file_cache',

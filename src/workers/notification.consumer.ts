@@ -19,6 +19,7 @@ export const AUTO_DELETE_TTL_MS: Record<NotificationKind, number | null> = {
   'feature.state': 30_000,
   'payout.sent': null,
   'admin.alert': null,
+  'waitlist.referral': 30_000,
 }
 
 export function renderNotification(job: NotificationJob): { text: string } {
@@ -57,6 +58,14 @@ export function renderNotification(job: NotificationJob): { text: string } {
       const { severity, message } = job.context
       return { text: `🚨 <b>[${severity}]</b> ${message}` }
     }
+    case 'waitlist.referral': {
+      const { newPosition, referralCount } = job.context
+      return {
+        text: `🎉 <b>A soldier enlisted via your link!</b>\n`
+          + `You've climbed to <b>#${newPosition}</b> on the waitlist `
+          + `(${referralCount} referral${referralCount === 1 ? '' : 's'}).`,
+      }
+    }
     default: {
       const _exhaustive: never = job
       throw new Error(`Unhandled notification kind: ${(_exhaustive as { kind: string }).kind}`)
@@ -74,6 +83,17 @@ export interface NotificationProcessorDeps {
 export function createNotificationProcessor(deps: NotificationProcessorDeps) {
   return async function processNotification(job: NotificationJob): Promise<void> {
     const chatId = Number(job.userId)
+
+    // `userId` MUST be the recipient's Telegram chat id (the payload is fat —
+    // the consumer never resolves ids via the DB, per ADR-0002 N-2). Fail loud
+    // if a producer slips in an internal user UUID (Number(uuid) → NaN), rather
+    // than silently sending to NaN and dropping the message.
+    if (!Number.isInteger(chatId)) {
+      throw new TypeError(
+        `notification job '${job.kind}' has a non-numeric userId (${JSON.stringify(job.userId)}); `
+        + 'producers must pass the recipient\'s Telegram chat id, not an internal user UUID',
+      )
+    }
 
     // feature.* events both re-render the persistent pinned status message AND
     // fire a transient alert (ARCHITECTURE §6.8). The pinned edit happens first

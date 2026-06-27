@@ -25,8 +25,13 @@ const CONFIG: FeePayoutConfig = { minPayoutSol: 0.01 }
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 function makeEarnings(overrides: Partial<UserEarnings> = {}): UserEarnings {
+  const userId = overrides.userId ?? 'user-1'
   return {
-    userId: 'user-1',
+    userId,
+    // The payout.sent notification is addressed by telegramId, while the
+    // referral_payouts row is keyed by userId. Keep them DISTINCT (tg-<userId>)
+    // so a userId<->telegramId swap is caught by the recipient assertions.
+    telegramId: overrides.telegramId ?? `tg-${userId}`,
     payoutWalletAddress: WALLET,
     pendingSol: '0.050000000',
     lastPayoutEnd: LAST_PERIOD_END,
@@ -168,7 +173,7 @@ describe('runPayoutCycle — happy path', () => {
     expect(notifications.jobs).toHaveLength(1)
     expect(notifications.jobs[0]).toMatchObject({
       kind: 'payout.sent',
-      userId: 'user-1',
+      userId: 'tg-user-1',
       context: { amountSol: 0.05, txSignature: `sig-for-${WALLET}` },
     })
     expect(result).toEqual({ scanned: 1, paid: 1, skipped: 0, failed: 0, unresolved: 0 })
@@ -239,7 +244,7 @@ describe('runPayoutCycle — not-broadcast transfer (no money moved)', () => {
     expect(payouts.confirmed).toEqual([{ id: 'payout-row-2', signature: `sig-for-${WALLET2}` }])
     // Only the successful payout notifies.
     expect(notifications.jobs).toHaveLength(1)
-    expect(notifications.jobs[0]).toMatchObject({ kind: 'payout.sent', userId: 'user-2' })
+    expect(notifications.jobs[0]).toMatchObject({ kind: 'payout.sent', userId: 'tg-user-2' })
     expect(result).toEqual({ scanned: 2, paid: 1, skipped: 0, failed: 1, unresolved: 0 })
   })
 })
@@ -327,7 +332,7 @@ describe('runPayoutCycle — reserve (createPending) failure does not abort the 
     // No SOL moved for user-1 (no row reserved); user-2 is still paid.
     expect(transfer.sent).toEqual([{ toAddress: WALLET2, lamports: 50_000_000n }])
     expect(payouts.created.map(c => c.userId)).toEqual(['user-2'])
-    expect(notifications.jobs.map(j => j.userId)).toEqual(['user-2'])
+    expect(notifications.jobs.map(j => j.userId)).toEqual(['tg-user-2'])
     // user-1 rolls over (balance intact, retried next cycle); cycle not aborted.
     expect(result).toEqual({ scanned: 2, paid: 1, skipped: 0, failed: 1, unresolved: 0 })
   })
@@ -364,6 +369,6 @@ describe('runPayoutCycle — mixed cohort summary', () => {
 
     expect(result).toEqual({ scanned: 4, paid: 1, skipped: 2, failed: 1, unresolved: 0 })
     // Only the genuinely-paid user is notified.
-    expect(notifications.jobs.map(j => j.userId)).toEqual(['paid'])
+    expect(notifications.jobs.map(j => j.userId)).toEqual(['tg-paid'])
   })
 })

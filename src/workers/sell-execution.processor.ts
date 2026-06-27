@@ -89,8 +89,11 @@ export interface FeeLedgerRepoSeam {
 }
 
 export interface IdentitySeam {
-  /** Resolves the owning user_id for a project_feature. Required for fee_ledger.user_id + notifications. */
-  getUserIdByFeatureId: (featureId: string) => Promise<string>
+  /**
+   * Resolve the feature owner's internal `userId` (UUID, for fee_ledger.user_id)
+   * AND their Telegram chat id (for notification delivery) in a single lookup.
+   */
+  resolveIdentity: (featureId: string) => Promise<{ userId: string, telegramId: string }>
 }
 
 export interface ChainSeam {
@@ -299,8 +302,10 @@ export async function executeSellJob(
         jobSnapshot: job,
       })
     }
-    // 2. Resolve userId (needed for fee_ledger + every notification path)
-    const userId = await deps.identity.getUserIdByFeatureId(job.featureId)
+    // 2. Resolve the owner's user id (for fee_ledger) and Telegram chat id (for
+    //    notifications). The notification payload must carry the chat id — the
+    //    consumer never resolves ids via the DB (ADR-0002 N-2).
+    const { userId, telegramId } = await deps.identity.resolveIdentity(job.featureId)
 
     // 3. Check which persisted signatures actually landed on-chain. Recovery
     //    and fresh-job paths share this code: every step decides "skip vs run"
@@ -337,7 +342,7 @@ export async function executeSellJob(
       // prior process), so fold 0 tokens but the SOL captured during that swap.
       await deps.features.incrementSellStats(job.featureId, { soldTokens: 0, receivedSol: grossSol })
       await deps.notifications.enqueueNotification({
-        userId,
+        userId: telegramId,
         kind: 'sell.completed',
         context: {
           mint: job.mint,
@@ -388,7 +393,7 @@ export async function executeSellJob(
         // Funding never moved funds — terminal failure, no recovery branch.
         await deps.transactions.markFailed(tx.id, { step: 'funding', error: String(err) })
         await deps.notifications.enqueueNotification({
-          userId,
+          userId: telegramId,
           kind: 'sell.failed',
           context: {
             mint: job.mint,
@@ -427,7 +432,7 @@ export async function executeSellJob(
             signature: tx.sellTxSignature,
           })
           await deps.notifications.enqueueNotification({
-            userId,
+            userId: telegramId,
             kind: 'sell.failed',
             context: { mint: job.mint, symbol: job.mint, reason: 'Swap signature did not land' },
           })
@@ -461,7 +466,7 @@ export async function executeSellJob(
             signature: swapResult.signature,
           })
           await deps.notifications.enqueueNotification({
-            userId,
+            userId: telegramId,
             kind: 'sell.failed',
             context: { mint: job.mint, symbol: job.mint, reason: 'Swap confirmation timed out' },
           })
@@ -505,7 +510,7 @@ export async function executeSellJob(
     catch (err) {
       await deps.transactions.markRecoveryNeeded(tx.id, { step: 'sweep', error: String(err) })
       await deps.notifications.enqueueNotification({
-        userId,
+        userId: telegramId,
         kind: 'sell.failed',
         context: { mint: job.mint, symbol: job.mint, reason: `Sweep failed after retries: ${String(err)}` },
       })
@@ -527,7 +532,7 @@ export async function executeSellJob(
 
     // 10. Terminal notification
     await deps.notifications.enqueueNotification({
-      userId,
+      userId: telegramId,
       kind: 'sell.completed',
       context: {
         mint: job.mint,

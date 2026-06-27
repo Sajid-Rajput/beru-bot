@@ -28,7 +28,8 @@ const MINT = 'MintAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 const MAIN_WALLET = 'WalletAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 const PLATFORM_FEE_WALLET = 'PlatformFeeWalletaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 const FEATURE_ID = 'feat-1'
-const USER_ID = 'user-1'
+const USER_ID = 'user-1' // internal user UUID — used for fee_ledger.user_id
+const TELEGRAM_ID = '1000' // recipient Telegram chat id — used for notifications
 const TRIGGER_SIG = 'sig-trigger'
 const EPHEMERAL_PUBKEY = 'EphemeralAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 const EPHEMERAL_SECRET = Buffer.from('a'.repeat(128), 'hex') // 64 random bytes
@@ -148,9 +149,9 @@ function makeFakeFeeLedgerRepo() {
 
 function makeFakeIdentity(): IdentitySeam {
   return {
-    async getUserIdByFeatureId(featureId) {
+    async resolveIdentity(featureId) {
       if (featureId === FEATURE_ID)
-        return USER_ID
+        return { userId: USER_ID, telegramId: TELEGRAM_ID }
       throw new Error(`unknown feature: ${featureId}`)
     },
   }
@@ -427,7 +428,7 @@ describe('executeSellJob — happy path tracer', () => {
     expect(deps.notifications.sent).toHaveLength(1)
     const notif = deps.notifications.sent[0]!
     expect(notif.kind).toBe('sell.completed')
-    expect(notif.userId).toBe(USER_ID)
+    expect(notif.userId).toBe(TELEGRAM_ID)
     if (notif.kind === 'sell.completed') {
       expect(notif.context.mint).toBe(MINT)
       expect(notif.context.txSignatures.trigger).toBe(TRIGGER_SIG)
